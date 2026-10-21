@@ -1,11 +1,14 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Header } from "./Header";
 import { LoadingScreen } from "@/components/general-components/compnents";
 import { SideBar } from "@/features/portal/SideBar";
 import { useAuthStore } from "@/store/authStore";
+import { useHydrated } from "@/hooks/useHydrated";
+import { isMockMode } from "@/lib/config";
+import { loginUrl } from "@/lib/routes";
 
 type AuthWrapperProps = {
   children: ReactNode;
@@ -13,25 +16,46 @@ type AuthWrapperProps = {
 
 export const PortalWrapper = ({ children }: AuthWrapperProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const hydrated = useHydrated();
   const token = useAuthStore((state) => state.token);
 
   useEffect(() => {
-    if (!token) router.replace("/login");
-  }, [router, token]);
+    // Wait for the persisted session to load before deciding the visitor is signed out.
+    if (hydrated && !token) router.replace(loginUrl({ next: pathname }));
+  }, [hydrated, router, token, pathname]);
 
-  if (!token) {
+  if (!hydrated || !token) {
     return <LoadingScreen message="Restoring session..." />;
   }
 
   return (
-    <main className="m-0 p-0 fixed w-full h-full bg-white">
+    <div className="fixed inset-0 bg-white">
+      <a
+        href="#portal-content"
+        className="sr-only z-[80] rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[var(--primary-color)] shadow focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+      >
+        Skip to main content
+      </a>
       <SideBar />
-      <section className="fixed w-[calc(100%-64px)] md:w-[calc(100%-224px)] h-full right-0 top-0 flex flex-col justify-between items-center">
+      <div className="fixed right-0 top-0 flex h-full w-[calc(100%-64px)] flex-col md:w-[calc(100%-224px)]">
         <Header />
-        <section className="absolute w-full h-[calc(100%-60px)] bottom-0 overflow-y-auto bg-canvas">
+        {isMockMode() && (
+          <p
+            role="note"
+            className="shrink-0 bg-amber-100 px-4 py-1.5 text-center text-xs font-medium text-amber-950"
+          >
+            Demo mode: sample lessons, wallet and payments. Nothing here is real.
+          </p>
+        )}
+        <main
+          id="portal-content"
+          tabIndex={-1}
+          className="min-h-0 flex-1 overflow-y-auto bg-canvas outline-none"
+        >
           {children}
-        </section>
-      </section>
-    </main>
+        </main>
+      </div>
+    </div>
   );
 };

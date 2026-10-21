@@ -2,18 +2,22 @@ interface ProgressBarProps {
   value: number; // 0 – 100
   className?: string;
   showLabel?: boolean;
+  /** Accessible name for the progress bar. */
+  label?: string;
 }
 
 export const ProgressBar = ({
   value,
   className = "",
   showLabel = false,
+  label = "Progress",
 }: ProgressBarProps) => {
   const pct = Math.min(100, Math.max(0, value));
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <div
         role="progressbar"
+        aria-label={label}
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}

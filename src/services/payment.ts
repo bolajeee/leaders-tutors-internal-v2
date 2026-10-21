@@ -1,14 +1,14 @@
 import { apiClient } from "@/lib/api-client";
+import { isMockMode } from "@/lib/config";
+import { useAuthStore } from "@/store/authStore";
+import { useDemoStore } from "@/services/mock/demoStore";
+import type {
+  TransactionStatus,
+  TransactionType,
+  WalletTransaction,
+} from "@/types/payment";
 
-export interface WalletTransaction {
-  id: string;
-  amount: number;
-  currency: string;
-  status: "pending" | "success" | "failed" | "cancelled";
-  type: "load_wallet" | "exam_payment" | "ebook_payment" | "subscription";
-  createdAt: string;
-  description: string;
-}
+export type { WalletTransaction } from "@/types/payment";
 
 export interface PaymentInitiation {
   transactionId: string;
@@ -29,7 +29,7 @@ interface PaymentApiResponse {
   paymentProceedData?: PaymentApiResponse;
 }
 
-interface RawWalletTransaction {
+export interface RawWalletTransaction {
   transactionId?: string;
   id?: string;
   amount?: string | number;
@@ -42,12 +42,29 @@ interface RawWalletTransaction {
   description?: string;
 }
 
+const demo = () => {
+  const store = useDemoStore.getState();
+  const email = useAuthStore.getState().user?.email;
+  if (email) store.ensureAccount(email);
+  return useDemoStore.getState();
+};
+
 // Load wallet - initiate payment
 export const initiateWalletLoad = async (
   amount: number,
 ): Promise<PaymentInitiation> => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
-    return { transactionId: `WALLET-${Date.now()}`, paymentUrl: "", paystackPaymentKey: "pk_test_local_demo", amount, currency: "₦" };
+  if (isMockMode()) {
+    const transactionId = `WALLET-${Date.now()}`;
+    demo().recordTransaction({
+      id: transactionId,
+      amount,
+      currency: "₦",
+      status: "pending",
+      type: "load_wallet",
+      createdAt: new Date().toISOString(),
+      description: "Wallet funding",
+    });
+    return { transactionId, paymentUrl: "", paystackPaymentKey: "pk_test_local_demo", amount, currency: "₦" };
   }
   try {
     const response = await apiClient.post<PaymentApiResponse>(
@@ -70,8 +87,7 @@ export const initiateWalletLoad = async (
       amount: Number(data.amount) || amount,
       currency: data.currency || "₦",
     };
-  } catch (error) {
-    console.error("Wallet load initiation failed:", error);
+  } catch {
     throw new Error("Failed to initiate wallet loading");
   }
 };
@@ -80,14 +96,22 @@ export const initiateWalletLoad = async (
 export const confirmWalletLoadSuccess = async (
   transactionId: string,
 ): Promise<boolean> => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") return Boolean(transactionId);
+  if (isMockMode()) {
+    const store = demo();
+    const transaction = store.transactions.find((item) => item.id === transactionId);
+    if (!transaction) return false;
+    if (transaction.status !== "success") {
+      store.settleTransaction(transactionId, "success");
+      store.creditWallet(transaction.amount);
+    }
+    return true;
+  }
   try {
     await apiClient.post(
-      `/user/payment/load-wallet-success?id=${transactionId}`,
+      `/user/payment/load-wallet-success?id=${encodeURIComponent(transactionId)}`,
     );
     return true;
-  } catch (error) {
-    console.error("Wallet load confirmation failed:", error);
+  } catch {
     return false;
   }
 };
@@ -96,59 +120,47 @@ export const confirmWalletLoadSuccess = async (
 export const cancelWalletLoad = async (
   transactionId: string,
 ): Promise<boolean> => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") return Boolean(transactionId);
+  if (isMockMode()) {
+    demo().settleTransaction(transactionId, "cancelled");
+    return true;
+  }
   try {
     await apiClient.post(
-      `/user/payment/load-wallet-cancel?id=${transactionId}`,
+      `/user/payment/load-wallet-cancel?id=${encodeURIComponent(transactionId)}`,
     );
     return true;
-  } catch (error) {
-    console.error("Wallet load cancellation failed:", error);
+  } catch {
     return false;
   }
 };
 
-// Fetch user transactions
+export const mapRawTransaction = (transaction: RawWalletTransaction): WalletTransaction => ({
+  id: transaction.transactionId || transaction.id || "",
+  amount: parseFloat(String(transaction.amount ?? "0")) || 0,
+  currency: transaction.currency || "₦",
+  status: mapTransactionStatus(transaction.statusId ?? ""),
+  type: mapTransactionType(transaction.transactionType || transaction.type || ""),
+  createdAt: transaction.createdAt || transaction.created_at || "",
+  description:
+    transaction.description ||
+    `${transaction.transactionType || transaction.type || "Transaction"} - ${transaction.amount}`,
+});
+
+/**
+ * Fetch user transactions. Failures are thrown so screens can show a retry
+ * state instead of an empty history.
+ */
 export const fetchUserTransactions = async (): Promise<WalletTransaction[]> => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
-    return [
-      { id: "TRANS-DEMO-1001", amount: 1000, currency: "₦", status: "success", type: "subscription", createdAt: "2026-10-21T09:57:46+01:00", description: "Student plan renewal" },
-      { id: "TRANS-DEMO-1002", amount: 10000, currency: "₦", status: "success", type: "load_wallet", createdAt: "2026-10-16T12:58:18+01:00", description: "Wallet funding" },
-      { id: "TRANS-DEMO-1003", amount: 1000, currency: "₦", status: "cancelled", type: "subscription", createdAt: "2026-09-03T09:23:24+01:00", description: "Subscription payment" },
-    ];
-  }
-  try {
-    const data = await apiClient.get<RawWalletTransaction[]>(
-      "/user/payment/fetch-transactions",
-    );
+  if (isMockMode()) return demo().transactions;
 
-    if (!Array.isArray(data)) {
-      return [];
-    }
-
-    return data.map((transaction) => ({
-      id: transaction.transactionId || transaction.id || "",
-      amount: parseFloat(String(transaction.amount ?? "0")),
-      currency: transaction.currency || "₦",
-      status: mapTransactionStatus(transaction.statusId ?? ""),
-      type: mapTransactionType(
-        transaction.transactionType || transaction.type || "",
-      ),
-      createdAt: transaction.createdAt || transaction.created_at || "",
-      description:
-        transaction.description ||
-        `${transaction.type || "Transaction"} - ${transaction.amount}`,
-    }));
-  } catch (error) {
-    console.error("Transactions fetch failed:", error);
-    return [];
-  }
+  const data = await apiClient.get<RawWalletTransaction[]>(
+    "/user/payment/fetch-transactions",
+  );
+  return Array.isArray(data) ? data.map(mapRawTransaction) : [];
 };
 
 // Helper function to map status IDs to readable status
-function mapTransactionStatus(
-  statusId: number | string,
-): "pending" | "success" | "failed" | "cancelled" {
+export function mapTransactionStatus(statusId: number | string): TransactionStatus {
   switch (statusId?.toString()) {
     case "3":
       return "pending";
@@ -162,9 +174,7 @@ function mapTransactionStatus(
 }
 
 // Helper function to map transaction types
-function mapTransactionType(
-  type: string,
-): "load_wallet" | "exam_payment" | "ebook_payment" | "subscription" {
+export function mapTransactionType(type: string): TransactionType {
   if (type?.toLowerCase().includes("wallet")) return "load_wallet";
   if (type?.toLowerCase().includes("exam")) return "exam_payment";
   if (type?.toLowerCase().includes("ebook")) return "ebook_payment";

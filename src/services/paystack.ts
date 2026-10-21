@@ -3,6 +3,9 @@
  * Handles all Paystack payment integrations
  */
 
+import { isMockMode } from "@/lib/config";
+import { requestMockCheckout } from "@/services/mock/checkout";
+
 export interface PaystackConfig {
   publicKey: string;
   email: string;
@@ -11,8 +14,13 @@ export interface PaystackConfig {
   reference?: string;
   metadata?: Record<string, unknown>;
   channels?: string[];
+  /** Heading for the simulated checkout shown in mock mode. */
+  label?: string;
   onSuccess: (reference: string) => void;
+  /** The shopper closed the checkout without paying. */
   onClose: () => void;
+  /** Payment was started but is not confirmed yet (mock mode only). */
+  onPending?: (reference: string) => void;
 }
 
 export interface PaystackResponse {
@@ -28,7 +36,7 @@ export interface PaystackResponse {
  * Load Paystack inline script dynamically
  */
 export const loadPaystackScript = (): Promise<void> => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") return Promise.resolve();
+  if (isMockMode()) return Promise.resolve();
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") {
       reject(new Error("Paystack can only be loaded in browser environment"));
@@ -54,8 +62,17 @@ export const loadPaystackScript = (): Promise<void> => {
  * Initialize Paystack payment popup
  */
 export const initializePaystackPayment = (config: PaystackConfig): void => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
-    window.setTimeout(() => config.onSuccess(generateReference()), 500);
+  if (isMockMode()) {
+    const reference = generateReference();
+    void requestMockCheckout({
+      purpose: config.label ?? "Complete payment",
+      email: config.email,
+      amount: convertToNaira(config.amount),
+    }).then((outcome) => {
+      if (outcome === "paid") config.onSuccess(reference);
+      else if (outcome === "pending") (config.onPending ?? config.onClose)(reference);
+      else config.onClose();
+    });
     return;
   }
   const windowWithPaystack = window as unknown as {

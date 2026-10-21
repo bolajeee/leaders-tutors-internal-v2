@@ -78,7 +78,6 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
     <div className="w-full h-full flex items-center justify-center">
       <div
         className={`w-[90%] max-w-125 min-h-62.5 m-auto bg-white rounded-xl p-10 flex flex-col gap-3 justify-center items-center text-center border-2 ${borderClass} `}
-        role="document"
       >
         {icon && (
           <div className="shrink-0 mb-2" aria-hidden="true">
@@ -125,7 +124,13 @@ export const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className={className}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      className={className}
+      ariaLabelledBy={title ? "feedback-dialog-title" : undefined}
+      ariaLabel={title ? undefined : "Notice"}
+    >
       {content}
     </Modal>
   );

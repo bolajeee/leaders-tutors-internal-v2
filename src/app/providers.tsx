@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { queryClient } from "@/lib/query-client";
 import { ToastContainerWrapper } from "@/components/toast";
 import { DialogProvider } from "@/components/dialog-box/DialogProvider";
+import MockCheckoutHost from "@/components/payment/MockCheckoutHost";
 
 function Providers({ children }: { children: ReactNode }) {
   return (
@@ -12,6 +13,7 @@ function Providers({ children }: { children: ReactNode }) {
       {children}
       <ToastContainerWrapper />
       <DialogProvider />
+      <MockCheckoutHost />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );

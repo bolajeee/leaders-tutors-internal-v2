@@ -1,5 +1,24 @@
 import { apiClient } from "@/lib/api-client";
 import { AuthResponse } from "@/types/auth/auth";
+import {
+  getEndpoints,
+  getRecoveryCapability,
+  getResendOtpCapability,
+  isMockMode,
+  SUBSCRIPTION_PRICE,
+} from "@/lib/config";
+import { ApiError, FeatureUnavailableError } from "@/lib/errors";
+import {
+  labelFor,
+  MOCK_OTP,
+  MOCK_TAKEN_EMAIL,
+  MOCK_WRONG_PASSWORD,
+  mockDepartments,
+  mockExams,
+  mockPaymentMethods,
+  type DropdownOption,
+} from "@/services/mock/directory";
+import { useDemoStore, scenarioForEmail } from "@/services/mock/demoStore";
 
 export const PENDING_SIGNUP_EMAIL_STORAGE_KEY = "leaders-tutors-signup-email";
 export const PENDING_SIGNUP_VERIFICATION_STORAGE_KEY =
@@ -10,7 +29,7 @@ interface LoginPayload {
   password: string;
 }
 
-interface SignupPayload {
+export interface SignupPayload {
   fullName: string;
   emailAddress: string;
   phoneNumber: string;
@@ -21,7 +40,7 @@ interface SignupPayload {
   paymentMethodId?: string;
 }
 
-interface VerifySignupOtpPayload {
+export interface VerifySignupOtpPayload {
   userId: string;
   otp: number;
   password: string;
@@ -57,73 +76,24 @@ interface Exam {
   examAbbreviation: string;
 }
 
-interface DropdownOption {
-  value: string;
-  label: string;
-}
+const toList = <T>(data: T[] | { data?: T[] } | undefined): T[] =>
+  Array.isArray(data) ? data : data?.data || [];
 
 export const fetchDepartments = async (): Promise<DropdownOption[]> => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
-    return [
-      { value: "basic", label: "Basic School" },
-      { value: "junior", label: "Junior Secondary" },
-      { value: "senior", label: "Senior Secondary" },
-    ];
-  }
+  if (isMockMode()) return mockDepartments;
   const data = await apiClient.get<Department[]>(
     "/preset-data/fetch-departments",
   );
-
-  const finalData = Array.isArray(data)
-    ? data
-    : (data as { data?: Department[] })?.data || [];
-
-  return finalData.map((item: Department) => ({
+  return toList(data).map((item) => ({
     value: String(item.departmentId),
     label: item.departmentName,
   }));
 };
 
-export const fetchSubjects = async (
-  departmentId?: string,
-): Promise<DropdownOption[]> => {
-  const data = await apiClient.get<unknown[]>(
-    departmentId
-      ? `/preset-data/fetch-external-subjects?departmentId=${departmentId}`
-      : "/preset-data/fetch-external-subjects",
-  );
-
-  const finalData = Array.isArray(data)
-    ? data
-    : (data as { data?: unknown[] })?.data || [];
-
-  return finalData.map((item: unknown) => ({
-    value: String(
-      (item as { subjectId?: unknown; id?: unknown }).subjectId ||
-        (item as { id?: unknown }).id,
-    ),
-    label:
-      (item as { subjectName?: string; name?: string }).subjectName ||
-      (item as { name?: string }).name ||
-      "",
-  }));
-};
-
 export const fetchExams = async (): Promise<DropdownOption[]> => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
-    return [
-      { value: "basic-5", label: "Basic 5" },
-      { value: "jss-2", label: "JSS 2" },
-      { value: "sss-2", label: "SSS 2" },
-    ];
-  }
+  if (isMockMode()) return mockExams;
   const data = await apiClient.get<Exam[]>("/preset-data/fetch-external-exams");
-
-  const finalData = Array.isArray(data)
-    ? data
-    : (data as { data?: Exam[] })?.data || [];
-
-  return finalData.map((item: Exam) => ({
+  return toList(data).map((item) => ({
     value: String(item.examId),
     label: item.examAbbreviation,
   }));
@@ -135,18 +105,11 @@ interface PaymentMethod {
 }
 
 export const fetchPaymentMethods = async (): Promise<DropdownOption[]> => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
-    return [{ value: "CC", label: "Card payment (Paystack)" }];
-  }
+  if (isMockMode()) return mockPaymentMethods;
   const data = await apiClient.get<PaymentMethod[]>(
     "/preset-data/fetch-payment-methods?paymentMethodIds=CC,BT",
   );
-
-  const finalData = Array.isArray(data)
-    ? data
-    : (data as { data?: PaymentMethod[] })?.data || [];
-
-  return finalData.map((item: PaymentMethod) => ({
+  return toList(data).map((item) => ({
     value: item.paymentMethodId,
     label: item.paymentMethodName,
   }));
@@ -162,6 +125,10 @@ const getStringValue = (
 
     if (typeof value === "string" && value.trim()) {
       return value;
+    }
+    // Ids such as userId may arrive as numbers.
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
     }
   }
 
@@ -191,8 +158,8 @@ export const mapSignupPayload = (
 ): SignupPayload => {
   return {
     fullName: formData.fullName.trim(),
-    emailAddress: formData.emailAddress,
-    phoneNumber: formData.phoneNumber,
+    emailAddress: formData.emailAddress.trim(),
+    phoneNumber: formData.phoneNumber.trim(),
     departmentId: formData.department.trim(),
     examId: formData.exam.trim(),
     password: formData.password,
@@ -200,6 +167,62 @@ export const mapSignupPayload = (
     paymentMethodId: extras.paymentMethodId,
   };
 };
+
+/* -------------------------------------------------------------------------- */
+/*  Mock backend (NEXT_PUBLIC_CURRICULUM_SOURCE=mock)                         */
+/* -------------------------------------------------------------------------- */
+
+const titleCase = (value: string) =>
+  value.replace(/\b\w/g, (char) => char.toUpperCase());
+
+const nameFromEmail = (email: string) =>
+  titleCase(
+    email
+      .split("@")[0]
+      .replace(/[._-]+/g, " ")
+      .replace(/\d+/g, "")
+      .trim() || "Student",
+  );
+
+const mockSession = (profile: {
+  emailAddress: string;
+  fullName: string;
+  phoneNumber?: string;
+  departmentId?: string;
+  examId?: string;
+}): AuthApiResponse => {
+  const departmentId = profile.departmentId ?? "basic";
+  const examId = profile.examId ?? "basic-5";
+  return {
+    accessKey: `mock-session-${Math.random().toString(36).slice(2, 10)}`,
+    userId: `demo-${profile.emailAddress}`,
+    emailAddress: profile.emailAddress,
+    fullName: profile.fullName,
+    phoneNumber: profile.phoneNumber ?? "",
+    departmentId,
+    departmentName: labelFor(mockDepartments, departmentId, "Basic School"),
+    examId,
+    examAbbreviation: labelFor(mockExams, examId, "Basic 5"),
+    role: "Student",
+    status: "Active",
+  };
+};
+
+const mockLogin = (payload: LoginPayload): AuthApiResponse => {
+  if (payload.password === MOCK_WRONG_PASSWORD) {
+    throw new ApiError("Invalid email or password.", 401);
+  }
+  const email = payload.emailAddress.trim().toLowerCase();
+  useDemoStore.getState().ensureAccount(email);
+  return mockSession({
+    emailAddress: email,
+    fullName: scenarioForEmail(email) === "expired" ? "Expired Student" : nameFromEmail(email),
+  });
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Auth API                                                                  */
+/* -------------------------------------------------------------------------- */
 
 export const signupUser = async (payload: SignupPayload) => {
   const body = {
@@ -213,13 +236,16 @@ export const signupUser = async (payload: SignupPayload) => {
     paymentMethodId: payload.paymentMethodId,
   };
 
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
+  if (isMockMode()) {
+    if (payload.emailAddress.trim().toLowerCase() === MOCK_TAKEN_EMAIL) {
+      throw new ApiError("An account with this email address already exists.", 409);
+    }
     return {
-      userId: `demo-${Date.now()}`,
+      userId: `demo-${payload.emailAddress.trim().toLowerCase()}`,
       emailAddress: payload.emailAddress,
       paymentProceedData: {
         transactionId: `SIGNUP-${Date.now()}`,
-        amount: 1000,
+        amount: SUBSCRIPTION_PRICE.amount,
         currency: "NGN",
         paystackPaymentKey: "pk_test_local_demo",
       },
@@ -233,65 +259,66 @@ export const signupUser = async (payload: SignupPayload) => {
 };
 
 export const loginUser = async (payload: LoginPayload) => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
-    return {
-      accessKey: "local-demo-session",
-      userId: "demo-student",
-      emailAddress: payload.emailAddress,
-      fullName: "Demo Student",
-      departmentId: "basic",
-      departmentName: "Basic School",
-      examId: "basic-5",
-      examAbbreviation: "Basic 5",
-      role: "Student",
-      status: "Active",
-    };
-  }
+  if (isMockMode()) return mockLogin(payload);
   return apiClient.post<AuthApiResponse, LoginPayload>("/user/auth/login", payload);
 };
 
+/**
+ * Verifies the emailed code and sets the account password. The same proven
+ * endpoint serves signup verification and password recovery.
+ */
 export const verifySignupOtp = async (payload: VerifySignupOtpPayload) => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
-    if (String(payload.otp).length !== 6) throw new Error("Enter a six-digit verification code.");
+  if (isMockMode()) {
+    if (String(payload.otp) !== MOCK_OTP) {
+      throw new ApiError("That verification code isn't correct.", 400);
+    }
     return { success: true };
   }
   return apiClient.post<AuthApiResponse, VerifySignupOtpPayload>("/user/auth/create-new-password", payload);
+};
+
+export const requestPasswordRecovery = async (emailAddress: string): Promise<{ userId: string }> => {
+  const capability = getRecoveryCapability();
+  if (!capability.available) throw new FeatureUnavailableError(capability.reason ?? "Password recovery is unavailable.");
+  if (isMockMode()) return { userId: `demo-${emailAddress.trim().toLowerCase()}` };
+
+  const response = await apiClient.post<AuthApiResponse, { emailAddress: string }>(
+    getEndpoints().recoveryRequest as string,
+    { emailAddress },
+  );
+  const userId = getStringValue(response ?? {}, ["userId", "id"]);
+  if (!userId) throw new Error("We couldn't start password recovery. Please try again.");
+  return { userId };
+};
+
+export const resendSignupOtp = async (userId: string): Promise<void> => {
+  const capability = getResendOtpCapability();
+  if (!capability.available) throw new FeatureUnavailableError(capability.reason ?? "Resending codes is unavailable.");
+  if (isMockMode()) return;
+  await apiClient.post(getEndpoints().resendOtp as string, { userId });
 };
 
 export const getSignupVerificationData = (
   response: AuthApiResponse,
   signupPayload: SignupPayload,
 ): PendingSignupVerification => {
-  // Try to extract userId from various possible locations
-  let extractedUserId = null;
-
-  if (response) {
-    const responseData = response as Record<string, unknown>;
-    const dataObj = responseData?.data as Record<string, unknown> | undefined;
-    const userObj = responseData?.user as Record<string, unknown> | undefined;
-
-    extractedUserId =
-      getStringValue(response, ["userId", "id"]) ||
-      (dataObj
-        ? getStringValue(dataObj as AuthApiResponse, ["userId", "id"])
-        : null) ||
-      (userObj
-        ? getStringValue(userObj as AuthApiResponse, ["userId", "id"])
-        : null);
-  }
-
   const responseData = response as Record<string, unknown>;
-  const nestedData = responseData?.data as Record<string, unknown> | undefined;
+  const dataObj = responseData?.data as Record<string, unknown> | undefined;
+  const userObj = responseData?.user as Record<string, unknown> | undefined;
+
+  // The user id may sit at the top level or inside data/user depending on the API variant.
+  const extractedUserId =
+    getStringValue(response, ["userId", "id"]) ||
+    (dataObj ? getStringValue(dataObj, ["userId", "id"]) : "") ||
+    (userObj ? getStringValue(userObj, ["userId", "id"]) : "");
+
   const paymentProceedData = (responseData?.paymentProceedData ||
-    nestedData?.paymentProceedData) as
+    dataObj?.paymentProceedData) as
     | PendingSignupVerification["paymentProceedData"]
     | undefined;
 
-  console.log("Full signup response:", JSON.stringify(response, null, 2));
-  console.log("Payment proceed data:", paymentProceedData);
-
   return {
-    userId: extractedUserId ? String(extractedUserId) : `temp_${Date.now()}`,
+    userId: extractedUserId || `temp_${Date.now()}`,
     emailAddress: getStringValue(
       response,
       ["emailAddress", "email"],
@@ -349,152 +376,108 @@ export const clearPendingSignupVerification = () => {
   window.sessionStorage.removeItem(PENDING_SIGNUP_EMAIL_STORAGE_KEY);
 };
 
+type NestedRecord = Record<string, unknown> | undefined;
+
+const optionalId = (value: unknown) =>
+  value === undefined || value === null || value === "" ? undefined : String(value);
+
+const optionalText = (value: unknown) =>
+  typeof value === "string" && value.trim() ? value.trim() : undefined;
+
 export const normalizeAuthResponse = (
   response: AuthApiResponse,
   fallbackEmail: string,
 ): { token: string; user: AuthResponse } => {
-  console.log("normalizeAuthResponse - Full response:", response);
+  // Data may be nested in a `data` property depending on the API variant.
+  const source = (response?.data as AuthApiResponse | undefined) || response;
 
-  // Check if data is nested in a 'data' property
-  const dataObj = response?.data as Record<string, unknown> | undefined;
-  const sourceData = dataObj || response;
-
-  console.log("normalizeAuthResponse - Source data:", sourceData);
-
-  const token = getStringValue(sourceData as AuthApiResponse, [
-    "accessKey",
-    "accessToken",
-    "token",
-  ]);
-
-  console.log("normalizeAuthResponse - Extracted token:", token);
-
+  const token = getStringValue(source, ["accessKey", "accessToken", "token"]);
   if (!token) {
     throw new Error("Login succeeded but no access token was returned.");
   }
 
-  const fullName = getStringValue(sourceData as AuthApiResponse, ["fullName"]);
+  const fullName = getStringValue(source, ["fullName"]);
   const { firstName, lastName } = getNameParts(fullName);
+  const departmentData = source.departmentData as NestedRecord;
+  const examData = source.examData as NestedRecord;
 
-  const normalizedUser = {
+  return {
     token,
     user: {
       token,
-      id: getStringValue(
-        sourceData as AuthApiResponse,
-        ["id", "userId"],
-        "unknown-user",
-      ),
-      email: getStringValue(
-        sourceData as AuthApiResponse,
-        ["email", "emailAddress"],
-        fallbackEmail,
-      ),
-      first_name: getStringValue(
-        sourceData as AuthApiResponse,
-        ["first_name", "firstName"],
-        firstName,
-      ),
-      last_name: getStringValue(
-        sourceData as AuthApiResponse,
-        ["last_name", "lastName"],
-        lastName,
-      ),
+      id: getStringValue(source, ["id", "userId"], "unknown-user"),
+      email: getStringValue(source, ["email", "emailAddress"], fallbackEmail),
+      first_name: getStringValue(source, ["first_name", "firstName"], firstName),
+      last_name: getStringValue(source, ["last_name", "lastName"], lastName),
       phone_number:
-        getStringValue(sourceData as AuthApiResponse, [
-          "phone_number",
-          "phoneNumber",
-        ]) || null,
+        getStringValue(source, ["phone_number", "phoneNumber"]) || null,
       last_active: getStringValue(
-        sourceData as AuthApiResponse,
+        source,
         ["last_active", "lastActive", "lastLoginTime"],
         new Date().toISOString(),
       ),
-      role: getStringValue(sourceData as AuthApiResponse, ["role"], "User"),
-      status: getStringValue(
-        sourceData as AuthApiResponse,
-        ["status"],
-        "Active",
-      ),
+      role: getStringValue(source, ["role"], "User"),
+      status: getStringValue(source, ["status"], "Active"),
       middle_name:
-        getStringValue(sourceData as AuthApiResponse, [
-          "middle_name",
-          "middleName",
-        ]) || null,
-      // Enrollment — the login response carries these so the app can fetch
-      // tutorials immediately without a separate subscription call.
-      // departmentId can be a number (1) — coerce to string explicitly.
-      // Fields live both at top level AND in nested departmentData/examData.
-      departmentId: (() => {
-        const src = sourceData as Record<string, unknown>;
-        const deptData = src.departmentData as
-          | Record<string, unknown>
-          | undefined;
-        const raw = src.departmentId ?? deptData?.departmentId;
-        if (raw === undefined || raw === null || raw === "") return undefined;
-        return String(raw);
-      })(),
-      departmentName: (() => {
-        const src = sourceData as Record<string, unknown>;
-        const deptData = src.departmentData as
-          | Record<string, unknown>
-          | undefined;
-        const raw =
-          deptData?.departmentName ??
-          src.departmentName ??
-          src.department_name ??
-          src.department;
-        return typeof raw === "string" && raw.trim() ? raw.trim() : undefined;
-      })(),
-      examId: (() => {
-        const src = sourceData as Record<string, unknown>;
-        const examData = src.examData as Record<string, unknown> | undefined;
-        const raw = src.examId ?? examData?.examId;
-        if (raw === undefined || raw === null || raw === "") return undefined;
-        return String(raw);
-      })(),
-      examAbbreviation: (() => {
-        const src = sourceData as Record<string, unknown>;
-        const examData = src.examData as Record<string, unknown> | undefined;
-        const raw =
-          examData?.examAbbreviation ??
-          src.examAbbreviation ??
-          src.examAbbr ??
-          src.exam_abbreviation;
-        return typeof raw === "string" && raw.trim() ? raw.trim() : undefined;
-      })(),
+        getStringValue(source, ["middle_name", "middleName"]) || null,
+      // Enrollment — the login response carries these so the app can resolve
+      // the student's class without a separate call. Ids may be numbers, so they
+      // are coerced to strings; values live both at top level and nested.
+      departmentId: optionalId(source.departmentId ?? departmentData?.departmentId),
+      departmentName: optionalText(
+        departmentData?.departmentName ??
+          source.departmentName ??
+          source.department_name ??
+          source.department,
+      ),
+      examId: optionalId(source.examId ?? examData?.examId),
+      examAbbreviation: optionalText(
+        examData?.examAbbreviation ??
+          source.examAbbreviation ??
+          source.examAbbr ??
+          source.exam_abbreviation,
+      ),
     },
   };
-
-  console.log("normalizeAuthResponse - Normalized result:", normalizedUser);
-
-  return normalizedUser;
 };
 
 /**
- * Complete signup after successful payment
+ * Complete signup after successful payment. In mock mode the account is
+ * created from the pending signup details and seeded with an active plan.
  */
 export const completeSignupSuccess = async (
   transactionId: string,
   paymentKey: string,
 ): Promise<AuthApiResponse> => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
+  if (isMockMode()) {
+    const pending = readPendingSignupVerification();
+    if (!pending) throw new ApiError("Your signup session has expired. Please start again.", 400);
+    const { signupPayload } = pending;
+    const email = pending.emailAddress.trim().toLowerCase();
+    const demo = useDemoStore.getState();
+    demo.seed(email, "active", { fresh: true });
+    demo.recordTransaction({
+      id: transactionId,
+      amount: SUBSCRIPTION_PRICE.amount,
+      currency: SUBSCRIPTION_PRICE.currency,
+      status: "success",
+      type: "subscription",
+      createdAt: new Date().toISOString(),
+      description: "Registration payment",
+    });
     return {
-      accessKey: "local-demo-session",
-      userId: "demo-student",
-      fullName: "Demo Student",
-      emailAddress: "student@leaderstutors.com",
-      departmentId: "basic",
-      departmentName: "Basic School",
-      examId: "basic-5",
-      examAbbreviation: "Basic 5",
-      role: "Student",
-      status: "Active",
+      ...mockSession({
+        emailAddress: email,
+        fullName: signupPayload.fullName,
+        phoneNumber: signupPayload.phoneNumber,
+        departmentId: signupPayload.departmentId,
+        examId: signupPayload.examId,
+      }),
       transactionId,
       paymentKey,
     };
   }
   return apiClient.post<AuthApiResponse>(
-    `/user/auth/signup-success?transactionId=${transactionId}&paymentKey=${paymentKey}`,
+    `/user/auth/signup-success?transactionId=${encodeURIComponent(transactionId)}&paymentKey=${encodeURIComponent(paymentKey)}`,
   );
 };

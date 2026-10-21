@@ -1,4 +1,7 @@
 import { apiClient } from "@/lib/api-client";
+import { isMockMode } from "@/lib/config";
+import { ApiError } from "@/lib/errors";
+import { MOCK_WRONG_PASSWORD } from "@/services/mock/directory";
 
 export interface ChangePasswordPayload {
   oldPassword: string;
@@ -7,9 +10,12 @@ export interface ChangePasswordPayload {
 }
 
 export const changePassword = async (payload: ChangePasswordPayload) => {
-  if (process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api") {
+  if (isMockMode()) {
     await new Promise((resolve) => setTimeout(resolve, 400));
-    return { success: true, message: "Password updated in local demo mode." };
+    if (payload.oldPassword === MOCK_WRONG_PASSWORD) {
+      throw new ApiError("Your current password is incorrect.", 400);
+    }
+    return { success: true, message: "Password updated." };
   }
   const response = await apiClient.post<
     { success?: boolean; message?: string },

@@ -5,7 +5,7 @@ import HomePage from "./HomePage";
 describe("marketing home page", () => {
   it("presents the primary student journey", () => {
     render(<HomePage />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("A stronger education");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("A good education is the foundation");
     expect(screen.getAllByRole("link", { name: /start learning/i })[0]).toHaveAttribute("href", "/sign-up");
     expect(screen.getByRole("heading", { name: /from sign-up to study time/i })).toBeInTheDocument();
   });

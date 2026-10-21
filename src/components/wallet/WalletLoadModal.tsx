@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
-import { X, CreditCard, Wallet } from "lucide-react";
-import { Button, TextInput } from "@/components/form";
+import { CheckCircle2, Clock, CreditCard, Wallet } from "lucide-react";
+import ModalShell from "@/components/ui/ModalShell";
 import {
   initiateWalletLoad,
   confirmWalletLoadSuccess,
@@ -13,6 +13,8 @@ import {
   convertToKobo,
 } from "@/services/paystack";
 import { useAuthStore } from "@/store/authStore";
+import { useRefreshAccount } from "@/hooks/usePortalData";
+import { getErrorMessage } from "@/lib/errors";
 
 interface WalletLoadModalProps {
   isOpen: boolean;
@@ -20,40 +22,64 @@ interface WalletLoadModalProps {
   onSuccess: () => void;
 }
 
+export const MIN_WALLET_LOAD = 100;
+
+type Outcome =
+  | { kind: "idle" }
+  | { kind: "success"; amount: number }
+  | { kind: "cancelled" }
+  | { kind: "pending" };
+
 export default function WalletLoadModal({
   isOpen,
   onClose,
   onSuccess,
 }: WalletLoadModalProps) {
   const user = useAuthStore((state) => state.user);
+  const refreshAccount = useRefreshAccount();
   const [amount, setAmount] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [outcome, setOutcome] = useState<Outcome>({ kind: "idle" });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const reset = () => {
+    setAmount("");
+    setError("");
+    setOutcome({ kind: "idle" });
+    setIsLoading(false);
+  };
 
-    const numAmount = parseFloat(amount);
-    if (!numAmount || numAmount < 100) {
-      setError("Minimum amount is ₦100");
+  const close = () => {
+    if (isLoading) return;
+    reset();
+    onClose();
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const numAmount = Number(amount);
+    if (!Number.isFinite(numAmount) || numAmount < MIN_WALLET_LOAD) {
+      setError(`Minimum amount is ₦${MIN_WALLET_LOAD}`);
       return;
     }
 
-    const publicKeyFallback = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
     const email = user?.email;
     if (!email) {
       setError("We couldn't find your email address. Please sign in again.");
       return;
     }
 
+    let transactionId = "";
     try {
       setIsLoading(true);
       setError("");
 
       const payment = await initiateWalletLoad(numAmount);
-      const publicKey = payment.paystackPaymentKey || publicKeyFallback;
+      transactionId = payment.transactionId;
+      const publicKey = payment.paystackPaymentKey || process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "";
       if (!publicKey) {
-        await cancelWalletLoad(payment.transactionId);
+        await cancelWalletLoad(transactionId);
         setError("Paystack is not configured for this environment.");
         setIsLoading(false);
         return;
@@ -64,135 +90,149 @@ export default function WalletLoadModal({
         publicKey,
         email,
         amount: convertToKobo(numAmount),
-        metadata: {
-          transactionId: payment.transactionId,
-          purpose: "load_wallet",
-        },
+        label: "Load wallet",
+        metadata: { transactionId, purpose: "load_wallet" },
         onSuccess: (reference) => {
           void (async () => {
-            const confirmed = await confirmWalletLoadSuccess(
-              payment.transactionId || reference,
-            );
+            const confirmed = await confirmWalletLoadSuccess(transactionId || reference);
             setIsLoading(false);
+            await refreshAccount();
             if (!confirmed) {
               setError(
                 "Payment received but we couldn't update your wallet yet. Please refresh shortly or contact support.",
               );
               return;
             }
-            setAmount("");
+            setOutcome({ kind: "success", amount: numAmount });
             onSuccess();
-            onClose();
           })();
         },
         onClose: () => {
-          void cancelWalletLoad(payment.transactionId);
+          void (async () => {
+            await cancelWalletLoad(transactionId);
+            await refreshAccount();
+            setIsLoading(false);
+            setOutcome({ kind: "cancelled" });
+          })();
+        },
+        onPending: () => {
+          void refreshAccount();
           setIsLoading(false);
+          setOutcome({ kind: "pending" });
         },
       });
-    } catch {
-      setError("Failed to initiate payment. Please try again.");
+    } catch (failure) {
+      setError(getErrorMessage(failure, "Failed to start payment. Please try again."));
       setIsLoading(false);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Wallet className="w-5 h-5 text-green-600" />
-            </div>
-            <h2 className="text-lg font-bold text-gray-900">Load Wallet</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-400" />
+    <ModalShell
+      isOpen={isOpen}
+      title="Load wallet"
+      onClose={close}
+      closeLabel="Close wallet dialog"
+      dismissible={!isLoading}
+      icon={<Wallet className="h-5 w-5" />}
+    >
+      {outcome.kind === "success" ? (
+        <div className="p-6 text-center" role="status">
+          <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" aria-hidden />
+          <h3 className="mt-4 text-xl font-semibold text-slate-900">Wallet loaded</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            ₦{outcome.amount.toLocaleString()} has been added to your wallet.
+          </p>
+          <button type="button" onClick={close} className="mt-6 min-h-11 w-full rounded-xl bg-[var(--primary-color)] px-4 text-sm font-semibold text-white">
+            Done
           </button>
         </div>
-
-        {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6">
+      ) : outcome.kind === "pending" ? (
+        <div className="p-6 text-center" role="status">
+          <Clock className="mx-auto h-12 w-12 text-amber-600" aria-hidden />
+          <h3 className="mt-4 text-xl font-semibold text-slate-900">Payment pending</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            We will credit your wallet once the payment is confirmed. You can follow it in your transaction history.
+          </p>
+          <button type="button" onClick={close} className="mt-6 min-h-11 w-full rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700">
+            Close
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="p-6" noValidate>
+          {outcome.kind === "cancelled" && (
+            <p role="status" className="mb-4 rounded-xl bg-slate-100 p-3 text-sm leading-6 text-slate-700">
+              Payment was cancelled and no money was taken. Enter an amount to try again.
+            </p>
+          )}
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="wallet-amount" className="mb-2 block text-sm font-semibold text-slate-800">
               Amount (₦)
             </label>
-            <TextInput
+            <input
+              id="wallet-amount"
               type="number"
+              inputMode="numeric"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(event) => setAmount(event.target.value)}
               placeholder="Enter amount"
-              min="100"
-              step="100"
-              required
-              className="text-lg"
+              min={MIN_WALLET_LOAD}
+              step={100}
+              aria-describedby="wallet-amount-hint"
+              aria-invalid={Boolean(error)}
+              className="h-12 w-full rounded-xl border border-slate-300 px-4 text-lg outline-none focus:border-[var(--primary-color)] focus:ring-2 focus:ring-[var(--primary-color-light)]"
             />
-            <p className="text-xs text-gray-500 mt-1">Minimum amount: ₦100</p>
+            <p id="wallet-amount-hint" className="mt-1 text-xs text-slate-600">
+              Minimum amount: ₦{MIN_WALLET_LOAD}
+            </p>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
+            <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              {error}
+            </p>
           )}
 
-          {/* Quick Amount Buttons */}
-          <div className="mb-6">
-            <p className="text-sm font-semibold text-gray-700 mb-3">
-              Quick Select
-            </p>
+          <fieldset className="mb-6">
+            <legend className="mb-3 text-sm font-semibold text-slate-800">Quick select</legend>
             <div className="grid grid-cols-3 gap-2">
               {[1000, 5000, 10000].map((quickAmount) => (
                 <button
                   key={quickAmount}
                   type="button"
-                  onClick={() => setAmount(quickAmount.toString())}
-                  className="p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-sm font-semibold"
+                  onClick={() => setAmount(String(quickAmount))}
+                  className="min-h-11 rounded-lg border border-slate-200 text-sm font-semibold hover:border-[var(--primary-color)] hover:bg-indigo-50"
                 >
                   ₦{quickAmount.toLocaleString()}
                 </button>
               ))}
             </div>
+          </fieldset>
+
+          <div className="mb-6 flex items-center gap-3 rounded-lg border border-slate-200 p-3">
+            <CreditCard className="h-5 w-5 text-slate-500" aria-hidden />
+            <span className="text-sm text-slate-700">Card payment (Paystack)</span>
           </div>
 
-          {/* Payment Method */}
-          <div className="mb-6">
-            <p className="text-sm font-semibold text-gray-700 mb-3">
-              Payment Method
-            </p>
-            <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
-              <CreditCard className="w-5 h-5 text-gray-400" />
-              <span className="text-sm text-gray-700">
-                Card Payment (Paystack)
-              </span>
-            </div>
-          </div>
-
-          {/* Actions */}
           <div className="flex gap-3">
-            <Button
+            <button
               type="button"
-              text="Cancel"
-              variant="secondary"
-              onClick={onClose}
-              className="flex-1"
+              onClick={close}
               disabled={isLoading}
-            />
-            <Button
+              className="min-h-11 flex-1 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
               type="submit"
-              text={isLoading ? "Processing..." : "Continue to Payment"}
-              className="flex-1"
-              disabled={isLoading || !amount}
-            />
+              disabled={isLoading}
+              className="min-h-11 flex-1 rounded-xl bg-[var(--primary-color)] px-4 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {isLoading ? "Processing…" : "Continue to payment"}
+            </button>
           </div>
         </form>
-      </div>
-    </div>
+      )}
+    </ModalShell>
   );
 }

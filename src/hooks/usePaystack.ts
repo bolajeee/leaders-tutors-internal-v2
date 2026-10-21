@@ -14,11 +14,12 @@ interface UsePaystackOptions {
   publicKey: string;
   onSuccess: (reference: string) => void;
   onClose?: () => void;
+  onPending?: (reference: string) => void;
 }
 
 interface UsePaystackReturn {
   initiatePayment: (
-    config: Omit<PaystackConfig, "publicKey" | "onSuccess" | "onClose">,
+    config: Omit<PaystackConfig, "publicKey" | "onSuccess" | "onClose" | "onPending">,
   ) => void;
   isLoading: boolean;
   error: string | null;
@@ -28,6 +29,7 @@ export const usePaystack = ({
   publicKey,
   onSuccess,
   onClose,
+  onPending,
 }: UsePaystackOptions): UsePaystackReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,9 +40,8 @@ export const usePaystack = ({
       try {
         await loadPaystackScript();
         setScriptLoaded(true);
-      } catch (err) {
+      } catch {
         setError("Failed to load payment system. Please refresh the page.");
-        console.error("Paystack script loading error:", err);
       }
     };
 
@@ -48,7 +49,9 @@ export const usePaystack = ({
   }, []);
 
   const initiatePayment = useCallback(
-    (config: Omit<PaystackConfig, "publicKey" | "onSuccess" | "onClose">) => {
+    (
+      config: Omit<PaystackConfig, "publicKey" | "onSuccess" | "onClose" | "onPending">,
+    ) => {
       if (!scriptLoaded) {
         setError("Payment system is still loading. Please wait...");
         return;
@@ -74,14 +77,18 @@ export const usePaystack = ({
             setIsLoading(false);
             onClose?.();
           },
+          onPending: (reference) => {
+            setIsLoading(false);
+            if (onPending) onPending(reference);
+            else onClose?.();
+          },
         });
-      } catch (err) {
+      } catch {
         setIsLoading(false);
         setError("Failed to initialize payment. Please try again.");
-        console.error("Payment initialization error:", err);
       }
     },
-    [scriptLoaded, publicKey, onSuccess, onClose],
+    [scriptLoaded, publicKey, onSuccess, onClose, onPending],
   );
 
   return {

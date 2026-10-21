@@ -25,7 +25,7 @@ const buttonClass =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary-color)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--primary-hover-color)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary-color)] disabled:cursor-wait disabled:opacity-60";
 
 export default function Settings() {
-  const { user, token, userEnrollment, clearAuth } = useAuthStore();
+  const { user, userEnrollment, clearAuth } = useAuthStore();
   const router = useRouter();
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -79,41 +79,22 @@ export default function Settings() {
     }
   };
 
-  if (!user || !token)
-    return (
-      <PortalWrapper>
-        <div className="mx-auto max-w-lg px-6 py-20 text-center">
-          <ShieldCheck className="mx-auto mb-5 h-10 w-10 text-[var(--primary-color)]" />
-          <h1 className="text-2xl font-semibold text-slate-900">
-            Your account settings
-          </h1>
-          <p className="my-4 text-sm text-slate-500">
-            Sign in to view your account and manage your password.
-          </p>
-          <Link href="/login" className={buttonClass}>
-            Sign in
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </PortalWrapper>
-    );
-
   const details = [
     {
       label: "Full name",
-      value: [user.first_name, user.middle_name, user.last_name]
+      value: [user?.first_name, user?.middle_name, user?.last_name]
         .filter(Boolean)
         .join(" "),
     },
-    { label: "Email address", value: user.email },
-    { label: "Phone number", value: user.phone_number },
+    { label: "Email address", value: user?.email },
+    { label: "Phone number", value: user?.phone_number },
     {
       label: "Examination",
-      value: user.examAbbreviation || userEnrollment?.examAbbreviation,
+      value: user?.examAbbreviation || userEnrollment?.examAbbreviation,
     },
     {
       label: "Department",
-      value: user.departmentName || userEnrollment?.departmentName,
+      value: user?.departmentName || userEnrollment?.departmentName,
     },
   ];
 

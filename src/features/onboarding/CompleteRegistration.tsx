@@ -3,13 +3,14 @@
 import { UserAuthWrapper } from "@/features/auth/UserAuthWrapper";
 import { useRouter } from "next/navigation";
 import { TextInput, FormSelect } from "@/components/form";
-import { ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { AlertCircle, ArrowRight, ArrowLeft, CheckCircle2, Clock, RefreshCw, XCircle } from "lucide-react";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { showToast } from "@/components/toast";
 import { useForm } from "react-hook-form";
 import {
   readPendingSignupVerification,
+  clearPendingSignupVerification,
   fetchPaymentMethods,
   completeSignupSuccess,
   normalizeAuthResponse,
@@ -17,11 +18,21 @@ import {
 } from "@/services/auth";
 import { PaystackModal } from "@/components/payment/PaystackModal";
 import { useAuthStore } from "@/store/authStore";
+import { SUBSCRIPTION_PRICE } from "@/lib/config";
+import { getErrorMessage } from "@/lib/errors";
+
+/** Where the payment step stands; everything except "idle" explains itself on screen. */
+export type PaymentState =
+  | { kind: "idle" }
+  | { kind: "cancelled" }
+  | { kind: "pending"; reference: string }
+  | { kind: "activating" }
+  | { kind: "error"; message: string; reference: string };
 
 export function CompleteRegistration() {
   const router = useRouter();
-  const { setAuth } = useAuthStore();
-  const [isPending, setIsPending] = useState(false);
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const [payment, setPayment] = useState<PaymentState>({ kind: "idle" });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [pendingData, setPendingData] =
@@ -29,6 +40,7 @@ export function CompleteRegistration() {
   const [paymentMethods, setPaymentMethods] = useState<
     { value: string; label: string }[]
   >([]);
+  const [methodError, setMethodError] = useState("");
 
   const { control, watch } = useForm({
     defaultValues: {
@@ -39,7 +51,8 @@ export function CompleteRegistration() {
   const selectedPaymentMethod = watch("paymentMethod");
   const paymentAmount = pendingData?.paymentProceedData?.amount
     ? parseFloat(String(pendingData.paymentProceedData.amount))
-    : 1000;
+    : SUBSCRIPTION_PRICE.amount;
+  const busy = payment.kind === "activating";
 
   useEffect(() => {
     const data = readPendingSignupVerification();
@@ -58,10 +71,8 @@ export function CompleteRegistration() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const methods = await fetchPaymentMethods();
-        setPaymentMethods(methods);
-      } catch (error) {
-        console.error("Failed to fetch payment methods:", error);
+        setPaymentMethods(await fetchPaymentMethods());
+      } catch {
         showToast({
           variant: "error",
           title: "Error",
@@ -74,82 +85,51 @@ export function CompleteRegistration() {
   }, []);
 
   const handleProceed = () => {
-    console.log("PROCEED clicked");
-    console.log("Selected payment method:", selectedPaymentMethod);
-    console.log("Pending data:", pendingData);
-    console.log("Payment proceed data:", pendingData?.paymentProceedData);
-
     if (!selectedPaymentMethod) {
-      showToast({
-        variant: "error",
-        title: "Payment Method Required",
-        message: "Please select a payment method to proceed.",
-      });
+      setMethodError("Please select a payment method to proceed.");
       return;
     }
-
+    setMethodError("");
+    setPayment({ kind: "idle" });
     setShowPaymentModal(true);
   };
 
-  const handlePaymentSuccess = async (reference: string) => {
+  /** Confirms the payment with the API, then signs the student in. */
+  const activateAccount = async (reference: string) => {
+    if (!pendingData) return;
+    setShowPaymentModal(false);
+    setPayment({ kind: "activating" });
+
     try {
-      setShowPaymentModal(false);
-      setIsPending(true);
-
-      console.log("Payment reference from Paystack:", reference);
-
       const transactionId =
-        pendingData?.paymentProceedData?.transactionId || reference;
+        pendingData.paymentProceedData?.transactionId || reference;
       const paymentKey =
-        pendingData?.paymentProceedData?.paystackPaymentKey ||
+        pendingData.paymentProceedData?.paystackPaymentKey ||
         process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ||
         "";
 
       if (!transactionId || !paymentKey) {
-        console.error("Missing transaction data:", {
-          transactionId,
-          paymentKey,
-        });
         throw new Error(
-          "Transaction details not found. Please try signing up again.",
+          "We couldn't find your payment details. Please start the sign-up again.",
         );
       }
 
-      console.log("Calling signup-success with:", {
-        transactionId,
-        paymentKey,
-      });
-
-      const signupSuccessResponse = await completeSignupSuccess(
-        transactionId,
-        paymentKey,
-      );
-      console.log("Signup success response:", signupSuccessResponse);
-
-      // Check if the response contains access token
-      const responseData = signupSuccessResponse as Record<string, unknown>;
-      const dataObj = responseData?.data as Record<string, unknown> | undefined;
-      const accessKey = (dataObj?.accessKey || responseData?.accessKey) as
+      const response = await completeSignupSuccess(transactionId, paymentKey);
+      const data = response?.data as Record<string, unknown> | undefined;
+      const accessKey = (data?.accessKey || response?.accessKey) as
         | string
         | undefined;
 
-      console.log("Access key found:", accessKey);
-      console.log("Data object:", dataObj);
+      clearPendingSignupVerification();
 
-      if (accessKey && pendingData) {
-        // Automatically log the user in
-        console.log("Auto-login: normalizing auth response...");
+      if (accessKey) {
+        // Payment confirmed and a session was issued: sign the student in.
         const { token, user } = normalizeAuthResponse(
-          signupSuccessResponse,
+          response,
           pendingData.emailAddress,
         );
-
-        console.log("Auto-login: setting auth with token:", token);
-        console.log("Auto-login: user data:", user);
-
         setAuth(user, token);
 
-        // Seed enrollment from signup payload (always reliable) or login response
         const deptId =
           pendingData.signupPayload?.departmentId || user.departmentId || "";
         const examId = pendingData.signupPayload?.examId || user.examId || "";
@@ -168,50 +148,47 @@ export function CompleteRegistration() {
           title: "Welcome!",
           message: "Registration successful. You are now logged in.",
         });
-
-        console.log("Auto-login: redirecting to dashboard...");
-        // Redirect to dashboard
         router.push("/dashboard");
       } else {
-        console.log("No access key found, redirecting to login");
-        // No access token, redirect to login
         showToast({
           variant: "success",
           title: "Registration Successful!",
-          message: "Your account has been created. Please log in now.",
+          message: "Your account is active. Please log in now.",
         });
         router.push("/login");
       }
     } catch (error) {
-      console.error("Error in handlePaymentSuccess:", error);
-      // Show success toast anyway since payment was successful
-      showToast({
-        variant: "success",
-        title: "Registration Successful!",
-        message: "Your account has been created. Please log in now.",
+      // Never report success when activation failed: keep the reference so the
+      // student can retry without paying again.
+      setPayment({
+        kind: "error",
+        reference,
+        message: getErrorMessage(
+          error,
+          "We couldn't activate your account yet.",
+        ),
       });
-      router.push("/login");
-    } finally {
-      setIsPending(false);
     }
   };
 
-  const handlePaymentClose = () => {
+  const handlePaymentCancelled = () => {
     setShowPaymentModal(false);
-    showToast({
-      variant: "warning",
-      title: "Payment Cancelled",
-      message: "You need to complete payment to activate your account.",
-    });
+    setPayment({ kind: "cancelled" });
   };
 
-  const handleGoBack = () => {
-    router.back();
+  const handlePaymentPending = (reference: string) => {
+    setShowPaymentModal(false);
+    setPayment({ kind: "pending", reference });
   };
 
   if (!pendingData) {
     return null;
   }
+
+  const retryReference =
+    payment.kind === "pending" || payment.kind === "error"
+      ? payment.reference
+      : "";
 
   return (
     <UserAuthWrapper>
@@ -220,7 +197,7 @@ export function CompleteRegistration() {
           <div className="w-20">
             <Image
               src="/body-pix/icon.png"
-              alt="Vector"
+              alt=""
               className="w-full h-auto"
               width={0}
               height={0}
@@ -235,17 +212,58 @@ export function CompleteRegistration() {
 
         <div className="w-full bg-[#F5F7FA] rounded-lg p-4 space-y-3 border border-gray-200">
           <div className="flex items-start gap-2">
-            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-green-700 mt-0.5 shrink-0" aria-hidden />
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">
                 {pendingData.signupPayload?.fullName}
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-700">
                 {pendingData.emailAddress}
               </p>
             </div>
           </div>
         </div>
+
+        {payment.kind === "cancelled" && (
+          <p role="status" className="flex w-full items-start gap-2 rounded-xl border border-slate-300 bg-slate-100 p-3 text-sm leading-6 text-slate-800">
+            <XCircle className="mt-1 h-4 w-4 shrink-0" aria-hidden />
+            Payment was cancelled and no money was taken. Your details are saved, so you can try again.
+          </p>
+        )}
+        {payment.kind === "pending" && (
+          <div role="status" className="flex w-full flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
+            <p className="flex items-start gap-2">
+              <Clock className="mt-1 h-4 w-4 shrink-0" aria-hidden />
+              Your payment is being confirmed. Once it is, check the status below to activate your account.
+            </p>
+            <button
+              type="button"
+              onClick={() => void activateAccount(retryReference)}
+              className="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg bg-amber-900 px-4 font-semibold text-white"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Check payment status
+            </button>
+          </div>
+        )}
+        {payment.kind === "error" && (
+          <div role="alert" className="flex w-full flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-900">
+            <p className="flex items-start gap-2">
+              <AlertCircle className="mt-1 h-4 w-4 shrink-0" aria-hidden />
+              <span>
+                {payment.message} If you have already paid, retry activation — you won&apos;t be charged again.
+              </span>
+            </p>
+            <button
+              type="button"
+              onClick={() => void activateAccount(retryReference)}
+              className="inline-flex min-h-11 items-center justify-center gap-2 self-start rounded-lg bg-red-800 px-4 font-semibold text-white"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Retry activation
+            </button>
+          </div>
+        )}
 
         <div className="w-full">
           <FormSelect
@@ -255,7 +273,8 @@ export function CompleteRegistration() {
             placeholder="Select Payment Method"
             control={control}
             options={paymentMethods}
-            disabled={isPending}
+            disabled={busy}
+            message={methodError}
           />
         </div>
 
@@ -267,29 +286,12 @@ export function CompleteRegistration() {
             placeholder="Enter your referral code"
             value={referralCode}
             onChange={(e) => setReferralCode(e.target.value)}
-            disabled={isPending}
+            disabled={busy}
           />
         </div>
 
         <div className="w-full bg-[#FFF4F4] border border-[#FFB4B4] rounded-lg p-4 flex items-start gap-3">
-          <div className="w-5 h-5 flex-shrink-0 mt-0.5">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M16.6667 5L7.50004 14.1667L3.33337 10"
-                stroke="#999999"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-700">
             Note: You will make payment of{" "}
             <span className="font-semibold text-[#1E3A8A]">
               ₦{paymentAmount.toLocaleString()}.00
@@ -300,50 +302,56 @@ export function CompleteRegistration() {
 
         <div className="flex gap-3 w-full">
           <button
-            onClick={handleGoBack}
-            disabled={isPending}
+            type="button"
+            onClick={() => router.back()}
+            disabled={busy}
+            aria-label="Go back"
             className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" aria-hidden />
             <span className="hidden sm:inline">Go Back</span>
           </button>
           <button
+            type="button"
             onClick={handleProceed}
-            disabled={isPending}
+            disabled={busy}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#1E3A8A] hover:bg-[#1E40AF] rounded-lg text-white font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed h-[55px] text-sm sm:text-base"
           >
-            {isPending ? (
-              <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+            {busy ? (
+              <>
+                <span className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" aria-hidden />
+                <span>Activating your account…</span>
+              </>
             ) : (
               <>
-                <span>PROCEED</span>
-                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>{payment.kind === "idle" ? "PROCEED" : "TRY PAYMENT AGAIN"}</span>
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
               </>
             )}
           </button>
         </div>
       </section>
 
-      {pendingData && (
-        <PaystackModal
-          isOpen={showPaymentModal}
-          onClose={handlePaymentClose}
-          email={pendingData.emailAddress}
-          amount={paymentAmount}
-          publicKey={pendingData.paymentProceedData?.paystackPaymentKey}
-          metadata={{
-            userId: pendingData.userId,
-            fullName: pendingData.signupPayload?.fullName,
-            referralCode: referralCode || undefined,
-            paymentMethod: selectedPaymentMethod,
-            transactionId: pendingData.paymentProceedData?.transactionId,
-            paymentMethodId: selectedPaymentMethod,
-          }}
-          onSuccess={handlePaymentSuccess}
-          title="Complete Registration Payment"
-          description="Complete your payment to activate your account and access all features."
-        />
-      )}
+      <PaystackModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onCancelled={handlePaymentCancelled}
+        onPending={handlePaymentPending}
+        email={pendingData.emailAddress}
+        amount={paymentAmount}
+        publicKey={pendingData.paymentProceedData?.paystackPaymentKey}
+        metadata={{
+          userId: pendingData.userId,
+          fullName: pendingData.signupPayload?.fullName,
+          referralCode: referralCode || undefined,
+          paymentMethod: selectedPaymentMethod,
+          transactionId: pendingData.paymentProceedData?.transactionId,
+          paymentMethodId: selectedPaymentMethod,
+        }}
+        onSuccess={(reference) => void activateAccount(reference)}
+        title="Complete Registration Payment"
+        description="Complete your payment to activate your account and access all features."
+      />
     </UserAuthWrapper>
   );
 }

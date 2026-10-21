@@ -5,13 +5,20 @@
  * Reusable modal for Paystack payment integration
  */
 
-import { X } from "lucide-react";
+import { CreditCard } from "lucide-react";
+import ModalShell from "@/components/ui/ModalShell";
 import { usePaystack } from "@/hooks/usePaystack";
+import { isMockMode } from "@/lib/config";
 import { convertToKobo, formatAmount } from "@/services/paystack";
 
 interface PaystackModalProps {
   isOpen: boolean;
+  /** The dialog was dismissed before payment started. */
   onClose: () => void;
+  /** The checkout opened but the shopper left without paying. Defaults to `onClose`. */
+  onCancelled?: () => void;
+  /** Payment started but is not confirmed yet. */
+  onPending?: (reference: string) => void;
   email: string;
   amount: number;
   publicKey?: string;
@@ -21,9 +28,13 @@ interface PaystackModalProps {
   description?: string;
 }
 
+const isPlaceholderKey = (key: string) => !key || key.includes("your_paystack_public_key_here");
+
 export const PaystackModal: React.FC<PaystackModalProps> = ({
   isOpen,
   onClose,
+  onCancelled,
+  onPending,
   email,
   amount,
   publicKey: publicKeyProp,
@@ -38,18 +49,19 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
   const { initiatePayment, isLoading, error } = usePaystack({
     publicKey,
     onSuccess,
-    onClose,
+    onClose: onCancelled ?? onClose,
+    onPending,
   });
 
-  const handlePayment = () => {
-    if (!publicKey || publicKey.includes("your_paystack_public_key_here")) {
-      console.error("Paystack public key is not configured properly");
-      return;
-    }
+  // The simulated checkout does not need a real key.
+  const isKeyMissing = !isMockMode() && isPlaceholderKey(publicKey);
 
+  const handlePayment = () => {
+    if (isKeyMissing) return;
     initiatePayment({
       email,
       amount: convertToKobo(amount),
+      label: title,
       metadata: {
         ...metadata,
         custom_fields: [
@@ -63,75 +75,57 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
     });
   };
 
-  if (!isOpen) return null;
-
-  const isKeyMissing =
-    !publicKey || publicKey.includes("your_paystack_public_key_here");
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-fade-in">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 animate-slide-up">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Close modal"
-          >
-            <X size={24} />
-          </button>
-        </div>
+    <ModalShell
+      isOpen={isOpen}
+      title={title}
+      onClose={onClose}
+      closeLabel="Close payment dialog"
+      dismissible={!isLoading}
+      icon={<CreditCard className="h-5 w-5" />}
+    >
+      <div className="space-y-4 p-6">
+        <p className="text-slate-700">{description}</p>
 
-        {/* Content */}
-        <div className="p-6 space-y-4">
-          <p className="text-gray-600">{description}</p>
-
-          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Email:</span>
-              <span className="text-sm font-medium text-gray-900">{email}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Amount:</span>
-              <span className="text-lg font-bold text-green-600">
-                {formatAmount(amount)}
-              </span>
-            </div>
+        <dl className="space-y-2 rounded-lg bg-slate-50 p-4">
+          <div className="flex items-center justify-between">
+            <dt className="text-sm text-slate-600">Email</dt>
+            <dd className="text-sm font-medium text-slate-900">{email}</dd>
           </div>
+          <div className="flex items-center justify-between">
+            <dt className="text-sm text-slate-600">Amount</dt>
+            <dd className="text-lg font-bold text-emerald-800">{formatAmount(amount)}</dd>
+          </div>
+        </dl>
 
-          {(error || isKeyMissing) && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-600">
-                {isKeyMissing
-                  ? "Payment system is not configured. Please add your Paystack public key to the .env file."
-                  : error}
-              </p>
-            </div>
-          )}
-
-          <button
-            onClick={handlePayment}
-            disabled={isLoading || isKeyMissing}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Processing...</span>
-              </>
-            ) : isKeyMissing ? (
-              <span>Payment Not Configured</span>
-            ) : (
-              <span>Pay {formatAmount(amount)}</span>
-            )}
-          </button>
-
-          <p className="text-xs text-center text-gray-500">
-            Secured by Paystack
+        {(error || isKeyMissing) && (
+          <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            {isKeyMissing
+              ? "Online payment isn't set up in this environment yet. Please contact support."
+              : error}
           </p>
-        </div>
+        )}
+
+        <button
+          type="button"
+          onClick={handlePayment}
+          disabled={isLoading || isKeyMissing}
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 py-3 font-medium text-white transition-colors hover:bg-emerald-800 disabled:bg-slate-400"
+        >
+          {isLoading ? (
+            <>
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden />
+              <span>Processing…</span>
+            </>
+          ) : isKeyMissing ? (
+            <span>Payment not available</span>
+          ) : (
+            <span>Pay {formatAmount(amount)}</span>
+          )}
+        </button>
+
+        <p className="text-center text-xs text-slate-600">Secured by Paystack</p>
       </div>
-    </div>
+    </ModalShell>
   );
 };

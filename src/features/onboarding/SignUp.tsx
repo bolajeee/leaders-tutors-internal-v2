@@ -2,12 +2,12 @@
 
 import { UserAuthWrapper } from "@/features/auth/UserAuthWrapper";
 import { useRouter } from "next/navigation";
-import { Button, FormSelect, TextInput } from "@/components/form";
+import { Button, FormSelect, PasswordInput, TextInput } from "@/components/form";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { SignupSchema, SignupSchemaType } from "@/types/auth/schema";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
 import { handleAppError } from "@/lib/axios";
@@ -44,7 +44,6 @@ export default function SignUp() {
     register,
     handleSubmit,
     control,
-    watch,
     getValues,
     formState: { errors },
   } = useForm<SignupSchemaType>({
@@ -73,8 +72,7 @@ export default function SignUp() {
         setDepartments(deptOptions);
         setExams(examOptions);
         setPaymentMethods(paymentOptions);
-      } catch (error) {
-        console.error(error);
+      } catch {
         showToast({
           variant: "error",
           title: "Error",
@@ -86,8 +84,8 @@ export default function SignUp() {
     fetchData();
   }, []);
 
-  const selectedDepartmentId = watch("department");
-  const selectedExamId = watch("exam");
+  const selectedDepartmentId = useWatch({ control, name: "department" });
+  const selectedExamId = useWatch({ control, name: "exam" });
   const selectedDepartment =
     departments.find((item) => item.value === selectedDepartmentId)?.label ||
     "";
@@ -131,12 +129,16 @@ export default function SignUp() {
 
   return (
     <UserAuthWrapper>
-      <section className="flex flex-col gap-5 justify-center items-start animate-fade-down">
+      <form
+        className="flex flex-col gap-5 justify-center items-start animate-fade-down"
+        onSubmit={handleSubmit(handleSignup)}
+        noValidate
+      >
         <div className="flex flex-col gap-2">
           <div className="w-20">
             <Image
               src="/body-pix/icon.png"
-              alt="Vector"
+              alt=""
               className="w-full h-auto"
               width={0}
               height={0}
@@ -146,14 +148,15 @@ export default function SignUp() {
           <h1 className="text-2xl text-(title-color) font-bold-custom">
             Student <span className="text-(--secondary-color)">Sign Up!</span>
           </h1>
-          <p>
+          <p className="text-slate-700">
             Kindly provide the required information to{" "}
             <strong>create your Leaders Tutors student account.</strong>
           </p>
         </div>
 
         <TextInput
-          id="text"
+          id="fullName"
+          autoComplete="name"
           label="Full Name"
           message={errors.fullName?.message}
           disabled={isPaying}
@@ -162,6 +165,8 @@ export default function SignUp() {
 
         <TextInput
           id="email"
+          type="email"
+          autoComplete="email"
           label="Email Address"
           message={errors.emailAddress?.message}
           disabled={isPaying}
@@ -170,6 +175,8 @@ export default function SignUp() {
 
         <TextInput
           id="tel"
+          type="tel"
+          autoComplete="tel"
           label="Mobile Number"
           message={errors.phoneNumber?.message}
           disabled={isPaying}
@@ -203,9 +210,9 @@ export default function SignUp() {
         />
 
         <div className="w-full relative">
-          <TextInput
+          <PasswordInput
             id="password"
-            type="password"
+            autoComplete="new-password"
             label="Create Password"
             message={errors.password?.message}
             disabled={isPaying}
@@ -214,9 +221,9 @@ export default function SignUp() {
         </div>
 
         <div className="w-full relative">
-          <TextInput
+          <PasswordInput
             id="confirmPassword"
-            type="password"
+            autoComplete="new-password"
             label="Confirm Password"
             message={errors.confirmPassword?.message}
             disabled={isPaying}
@@ -225,11 +232,11 @@ export default function SignUp() {
         </div>
 
         <Button
+          type="submit"
           text="Sign-Up"
           frontIcon={<ArrowRight />}
           fullWidth
           disabled={isPaying}
-          onClick={handleSubmit(handleSignup)}
         />
 
         <div className="flex flex-col gap-4 items-center justify-center w-full pt-4 border-t border-gray-300">
@@ -242,20 +249,8 @@ export default function SignUp() {
               Login Here
             </Link>
           </p>
-          <p className="text-sm text-(--text-color) text-center">
-            By signing up to this portal, you agree to our
-            <br />
-            <span className="text-(--secondary-color) font-medium-custom cursor-pointer hover:underline">
-              Privacy Policy
-            </span>{" "}
-            and{" "}
-            <span className="text-(--secondary-color) font-medium-custom cursor-pointer hover:underline">
-              Terms of Service
-            </span>
-            .
-          </p>
         </div>
-      </section>
+      </form>
 
       <SignupInstructionModal
         isOpen={showInstructionModal}

@@ -4,3 +4,4 @@ export type { BadgeTone } from "./Badge";
 export { Avatar } from "./Avatar";
 export { ProgressBar } from "./ProgressBar";
 export { StatTile } from "./StatTile";
+export { default as ModalShell } from "./ModalShell";

@@ -1,25 +1,36 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, TextInput } from "@/components/form";
+import { Button, PasswordInput, TextInput } from "@/components/form";
 import { AuthFormStepsType } from "@/types/auth/auth";
 import { AuthLoginSchema, AuthLoginType } from "@/types/auth/schema";
-import { ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { AlertCircle, ArrowRight, Info } from "lucide-react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import Image from "next/image";
 import { useState } from "react";
-import { handleAppError } from "@/lib/axios";
 import { showToast } from "@/components/toast";
 import { useAuthStore } from "@/store/authStore";
 import { loginUser, normalizeAuthResponse } from "@/services/auth";
+import { isMockMode, safeNextPath } from "@/lib/config";
+import { getErrorMessage } from "@/lib/errors";
 
 interface AuthFormStepsProps {
   gotoAuthFormPage: (stepKey: AuthFormStepsType) => void;
 }
 
+export const DEMO_ACCOUNTS = {
+  active: { email: "student@leaderstutors.com", password: "demo-password" },
+  expired: { email: "expired.student@leaderstutors.com", password: "demo-password" },
+} as const;
+
 export const Auth: React.FC<AuthFormStepsProps> = (props) => {
   const { gotoAuthFormPage } = props;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionExpired = searchParams.get("reason") === "session-expired";
+  const nextPath = safeNextPath(searchParams.get("next"));
   const [isPending, setIsPending] = useState(false);
+  const [formError, setFormError] = useState("");
   const {
     register,
     handleSubmit,
@@ -33,19 +44,20 @@ export const Auth: React.FC<AuthFormStepsProps> = (props) => {
     mode: "onChange",
   });
 
-  const handleLogin = async (data: AuthLoginType) => {
+  const signIn = async (credentials: { email: string; password: string }) => {
     try {
       setIsPending(true);
+      setFormError("");
 
       const response = await loginUser({
-        emailAddress: data.email,
-        password: data.password,
+        emailAddress: credentials.email,
+        password: credentials.password,
       });
-      const { token, user } = normalizeAuthResponse(response, data.email);
+      const { token, user } = normalizeAuthResponse(response, credentials.email);
 
       useAuthStore.getState().setAuth(user, token);
 
-      // Persist enrollment so tutorial fetches have departmentId + examId immediately
+      // Persist enrollment so the portal knows the student's class immediately.
       if (user.departmentId && user.examId) {
         useAuthStore.getState().setUserEnrollment({
           departmentId: user.departmentId,
@@ -61,58 +73,32 @@ export const Auth: React.FC<AuthFormStepsProps> = (props) => {
         title: "Login successful",
         message: "Your account is ready.",
       });
-      router.push("/dashboard");
+      router.push(nextPath);
     } catch (error) {
-      handleAppError({ showToast: true, error });
+      setFormError(getErrorMessage(error, "We couldn't sign you in. Please try again."));
     } finally {
       setIsPending(false);
     }
   };
 
-  const resetPassword = async () => {
-    gotoAuthFormPage("resetPassword");
-  };
-
-  const handleSignUp = () => {
-    router.push("/sign-up");
-  };
-
-  const handleDemo = () => {
-    const token = "local-demo-session";
-    useAuthStore.getState().setAuth({
-      token,
-      id: "demo-student",
-      email: "student@leaderstutors.com",
-      first_name: "Demo",
-      last_name: "Student",
-      phone_number: "+234 708 701 3213",
-      last_active: new Date().toISOString(),
-      role: "Student",
-      status: "Active",
-      middle_name: null,
-      departmentId: "basic",
-      departmentName: "Basic",
-      examId: "basic-5",
-      examAbbreviation: "Basic 5",
-    }, token);
-    useAuthStore.getState().setUserEnrollment({ departmentId: "basic", departmentName: "Basic", examId: "basic-5", examAbbreviation: "Basic 5", status: "active" });
-    router.push("/dashboard");
-  };
-
   return (
     <>
-      <section className="flex flex-col gap-5 justify-center items-start animate-fade-up">
+      <form
+        className="flex flex-col gap-5 justify-center items-start animate-fade-up"
+        onSubmit={handleSubmit(signIn)}
+        noValidate
+      >
         <div className="flex flex-col gap-2">
-          <div className="w-50">
+          <Link href="/" className="w-50" aria-label="Leaders Tutors home">
             <Image
               src="/body-pix/logo.png"
-              alt="Vector"
+              alt="Leaders Tutors"
               className="w-full h-auto"
               width={0}
               height={0}
               unoptimized
             />
-          </div>
+          </Link>
           <h1 className="text-2xl text-[#1F2937] font-bold-custom">
             Welcome <span className="text-(--secondary-color)">Back!</span>
           </h1>
@@ -122,71 +108,96 @@ export const Auth: React.FC<AuthFormStepsProps> = (props) => {
           </p>
         </div>
 
+        {sessionExpired && (
+          <p role="status" className="flex w-full items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
+            <Info className="mt-1 h-4 w-4 shrink-0" aria-hidden />
+            Your session has expired. Please sign in again to continue.
+          </p>
+        )}
+        {formError && (
+          <p role="alert" className="flex w-full items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">
+            <AlertCircle className="mt-1 h-4 w-4 shrink-0" aria-hidden />
+            {formError}
+          </p>
+        )}
+
         <TextInput
           id="email"
+          type="email"
+          autoComplete="username"
           label="Email address"
           message={errors.email?.message}
           disabled={isPending}
           {...register("email")}
         />
-        <TextInput
+        <PasswordInput
           id="password"
           label="Password"
-          type="password"
+          autoComplete="current-password"
           message={errors.password?.message}
           disabled={isPending}
           {...register("password")}
         />
         <p className="text-sm text-(--text-color)">
           Forgot Password?{" "}
-          <span
-            className="text-(--primary-color) font-medium-custom cursor-pointer hover:underline"
-            onClick={resetPassword}
+          <button
+            type="button"
+            className="text-(--primary-color) font-medium-custom hover:underline"
+            onClick={() => gotoAuthFormPage("resetPassword")}
           >
             Reset Password Here
-          </span>
+          </button>
         </p>
 
-        {/* BUTTON */}
         <Button
+          type="submit"
           text="Login"
           frontIcon={<ArrowRight />}
           fullWidth
           isLoading={isPending}
-          onClick={handleSubmit(handleLogin)}
         />
 
-        {process.env.NEXT_PUBLIC_CURRICULUM_SOURCE !== "api" && (
-          <button type="button" onClick={handleDemo} className="min-h-12 w-full rounded-xl border border-[var(--primary-color)] px-4 text-sm font-semibold text-[var(--primary-color)] transition hover:bg-indigo-50">
-            Explore the local demo
-          </button>
+        {isMockMode() && (
+          <fieldset className="w-full rounded-xl border border-dashed border-slate-300 p-4">
+            <legend className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Local demo
+            </legend>
+            <p className="mb-3 text-xs leading-5 text-slate-600">
+              Sample data only. No credentials needed.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => void signIn(DEMO_ACCOUNTS.active)}
+                className="min-h-11 rounded-xl border border-(--primary-color) px-3 text-sm font-semibold text-(--primary-color) transition hover:bg-indigo-50 disabled:opacity-50"
+              >
+                Explore the local demo
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => void signIn(DEMO_ACCOUNTS.expired)}
+                className="min-h-11 rounded-xl border border-slate-300 px-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Demo with expired plan
+              </button>
+            </div>
+          </fieldset>
         )}
 
-        {/* dont have an account? sign up here */}
         <div className="flex flex-col gap-4 items-center justify-center w-full pt-4 border-t border-gray-300">
           <p className="text-sm text-(--text-color)">
             Don&apos;t have an account?{" "}
-            <span
-              className="text-(--primary-color) font-medium-custom cursor-pointer hover:underline"
-              onClick={handleSignUp}
+            <Link
+              href="/sign-up"
+              className="text-(--primary-color) font-medium-custom hover:underline"
             >
               Sign Up Here
-            </span>
-          </p>
-          <p className="text-sm text-(--text-color) text-center">
-            By logging in to this portal, you agree to our
-            <br />
-            <span className="text-(--secondary-color) font-medium-custom cursor-pointer hover:underline">
-              Privacy Policy
-            </span>{" "}
-            and{" "}
-            <span className="text-(--secondary-color) font-medium-custom cursor-pointer hover:underline">
-              Terms of Service
-            </span>
-            .
+            </Link>
           </p>
         </div>
-      </section>
+      </form>
     </>
   );
 };

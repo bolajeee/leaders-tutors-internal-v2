@@ -1,155 +1,93 @@
-import { Button } from "@/components/form";
+"use client";
+
+import { useState } from "react";
+import { Button, OtpInput } from "@/components/form";
 import { AuthFormStepsType } from "@/types/auth/auth";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
-interface AuthFormStepsProps {
+import { resendSignupOtp } from "@/services/auth";
+import { getResendOtpCapability, isMockMode } from "@/lib/config";
+import { MOCK_OTP } from "@/services/mock/directory";
+import { getErrorMessage } from "@/lib/errors";
+import { showToast } from "@/components/toast";
+import { useCountdown } from "@/hooks/useCountdown";
+
+interface VerifyAccountProps {
   gotoAuthFormPage: (stepKey: AuthFormStepsType) => void;
+  email: string;
+  userId: string;
+  onVerified: (otp: string) => void;
 }
 
-export const VerifyAccount: React.FC<AuthFormStepsProps> = (props) => {
-  const { gotoAuthFormPage } = props;
+export const VerifyAccount: React.FC<VerifyAccountProps> = ({ gotoAuthFormPage, email, userId, onVerified }) => {
+  const [otp, setOtp] = useState("");
+  const [error, setError] = useState("");
+  const countdown = useCountdown(30);
+  const resend = getResendOtpCapability();
 
-  const [timer, setTimer] = useState(30);
-  const [showResendLink, setShowResendLink] = useState(false);
-  const countDownSec = () => {
-    const countdown = setInterval(() => {
-      setTimer((prevTimer) => {
-        if (prevTimer > 0) {
-          return prevTimer - 1;
-        } else {
-          setShowResendLink(true);
-          clearInterval(countdown);
-          return 0;
-        }
-      });
-    }, 1000);
-    return () => clearInterval(countdown);
-  };
-  useEffect(() => {
-    const speakTimer = setTimeout(() => {
-      countDownSec();
-    }, 2000); // 2-second delay
-    return () => clearTimeout(speakTimer);
-  }, []);
-  const resendOTP = async () => {
-    try {
-      setShowResendLink(false);
-      setTimer(30);
-    } catch (error: unknown) {
-      console.log(error);
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (otp.length !== 6) {
+      setError("Enter the six-digit code sent to your email.");
+      return;
     }
-  };
-  const [otp, setOtp] = useState(new Array(6).fill(""));
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    index: number,
-  ) => {
-    if (isNaN(Number(e.target.value))) return false;
-    setOtp(otp.map((data, i) => (i === index ? e.target.value : data)));
-    if (e.target.value && e.target.nextSibling) {
-      (e.target.nextSibling as HTMLInputElement).focus();
-    }
-  };
-
-  const handlePasteValue = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const value = e.clipboardData.getData("text");
-    if (isNaN(Number(value))) return false; // Ensure value is treated as a number
-    const updatedValue = value.toString().split("").slice(0, otp.length);
-    setOtp(updatedValue);
-    e.currentTarget.parentNode?.querySelector(
-      "input:focus",
-    ) as HTMLInputElement;
-  };
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    index: number,
-  ) => {
-    if (
-      e.key === "Backspace" &&
-      !e.currentTarget.value &&
-      e.currentTarget.previousSibling
-    ) {
-      (e.currentTarget.previousSibling as HTMLInputElement).focus();
-      setOtp(otp.map((data, i) => (i === index - 1 ? "" : data)));
-    }
-  };
-
-  const login = () => {
-    gotoAuthFormPage("login");
-  };
-  const createPassword = async () => {
+    setError("");
+    onVerified(otp);
     gotoAuthFormPage("createPassword");
   };
+
+  const resendCode = async () => {
+    try {
+      await resendSignupOtp(userId);
+      countdown.restart();
+      showToast({ variant: "success", title: "Code sent", message: `A new code was sent to ${email}.` });
+    } catch (failure) {
+      setError(getErrorMessage(failure, "We couldn't send a new code."));
+    }
+  };
+
   return (
-    <section className="flex flex-col gap-5 justify-center items-start animate-fade-up">
+    <form onSubmit={submit} noValidate className="flex flex-col gap-5 justify-center items-start animate-fade-up">
       <div className="flex flex-col gap-1">
         <div className="w-20">
-          <Image
-            src="/body-pix/icon.png"
-            alt="Vector"
-            className="w-full h-auto"
-            width={0}
-            height={0}
-            unoptimized
-          />
+          <Image src="/body-pix/icon.png" alt="" className="w-full h-auto" width={0} height={0} unoptimized />
         </div>
         <h1 className="text-2xl text-[#1F2937] font-bold-custom">
           Verify your <span className="text-(--secondary-color)">account</span>
         </h1>
-        <p className="text-gray-500 text-[16px]">
-          Enter the verification code sent to your email address{" "}
-          <span className="font-medium-custom text-(--primary-color)">
-            sunaf4real@gmail.com
-          </span>
+        <p className="text-gray-600 text-[16px]">
+          Enter the verification code sent to{" "}
+          <span className="font-medium-custom text-(--primary-color)">{email || "your email address"}</span>
         </p>
+        {isMockMode() && <p className="text-sm text-slate-600">Demo code: {MOCK_OTP}</p>}
       </div>
 
-      <div className="flex justify-between gap-5 w-full">
-        {otp.map((data, i) => {
-          return (
-            <input
-              key={i}
-              value={data}
-              onChange={(e) => handleChange(e, i)}
-              onPaste={handlePasteValue}
-              onKeyDown={(e) => handleKeyDown(e, i)}
-              maxLength={1}
-              type="text"
-              className="h-15 w-15 border border-black/20 rounded-md  bg-white  text-xl text-(--primary-color) focus:outline-none peer focus:bg-white focus:shadow-lg flex justify-center items-center text-center font-medium-custom"
-            />
-          );
-        })}
-      </div>
-      {!showResendLink ? (
-        <p className="text-md">
-          Don&apos;t see it? Send a new code in 00:{timer} sec
-        </p>
-      ) : (
-        <p
-          onClick={resendOTP}
-          className="text-md cursor-pointer hover:underline"
-        >
-          Resend OTP
+      <OtpInput value={otp} onChange={setOtp} invalid={Boolean(error)} describedBy={error ? "otp-error" : undefined} />
+      {error && (
+        <p id="otp-error" role="alert" className="text-sm text-red-700">
+          {error}
         </p>
       )}
 
-      {/* BUTTON */}
-      <Button
-        onClick={createPassword}
-        text="Proceed"
-        frontIcon={<ArrowRight />}
-        fullWidth
-      />
+      {!resend.available ? (
+        <p className="text-sm text-slate-600">{resend.reason}</p>
+      ) : !countdown.done ? (
+        <p className="text-sm text-slate-600">
+          Didn&apos;t get it? You can request a new code in 00:{String(countdown.remaining).padStart(2, "0")}
+        </p>
+      ) : (
+        <button type="button" onClick={() => void resendCode()} className="text-sm font-semibold text-(--primary-color) hover:underline">
+          Resend code
+        </button>
+      )}
+
+      <Button type="submit" text="Proceed" frontIcon={<ArrowRight />} fullWidth />
       <p className="text-sm text-(--text-color)">
-        Already have an account?{" "}
-        <span
-          className="text-(--primary-color) font-medium-custom cursor-pointer hover:underline"
-          onClick={login}
-        >
-          Login Here
-        </span>
+        Remembered it?{" "}
+        <button type="button" className="text-(--primary-color) font-medium-custom hover:underline" onClick={() => gotoAuthFormPage("login")}>
+          Back to login
+        </button>
       </p>
-    </section>
+    </form>
   );
 };

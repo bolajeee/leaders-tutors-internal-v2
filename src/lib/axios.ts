@@ -7,6 +7,7 @@ import axios, {
 } from "axios";
 import { showToast } from "@/components/toast";
 import { useAuthStore } from "@/store/authStore";
+import { handleUnauthorized } from "@/lib/session";
 
 const DEVICE_ID_STORAGE_KEY = "leaders-tutors-device-id";
 
@@ -106,7 +107,7 @@ export const handleAppError = ({
   error: unknown;
 }) => {
   let status: StatusCode = 500;
-  let message = "An unknown error occurred. afoo";
+  let message = "An unknown error occurred.";
 
   if ((error as AxiosError)?.response) {
     status = (error as AxiosError).response!.status as StatusCode;
@@ -157,6 +158,7 @@ const setupInterceptors = (instance: AxiosInstance) => {
     (error: AxiosError) => {
       const status = (error.response?.status as StatusCode) || 500;
       const message = extractErrorMessage(error);
+      if (status === 401) handleUnauthorized(error.config?.url);
       return Promise.reject({
         status,
         message,

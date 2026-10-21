@@ -1,5 +1,7 @@
 export { Button } from "./Buttons";
 export { TextInput } from "./TextInput";
+export { PasswordInput } from "./PasswordInput";
+export { OtpInput } from "./OtpInput";
 export { TextAreaInput } from "./TextAreaInput";
 export { FormSelect } from "./TextSelect";
 export { CustomTextSelect } from "./CustomTextSelect";

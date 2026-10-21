@@ -20,6 +20,9 @@ const getPortalContainer = () => {
   return container;
 };
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 interface ModalProps {
   /** Content to be rendered inside the modal */
   children: React.ReactNode;
@@ -31,7 +34,10 @@ interface ModalProps {
   closeOnOutsideClick?: boolean;
   /** Additional class names for the modal */
   className?: string;
+  /** Id of the element that titles the dialog. */
   ariaLabelledBy?: string;
+  /** Accessible name when no visible title exists. */
+  ariaLabel?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -41,8 +47,15 @@ export const Modal: React.FC<ModalProps> = ({
   closeOnOutsideClick = false,
   className = "",
   ariaLabelledBy,
+  ariaLabel,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useClickOutside(
     modalRef as React.RefObject<HTMLElement>,
@@ -51,6 +64,44 @@ export const Modal: React.FC<ModalProps> = ({
   );
 
   useScrollLock({ isOpen });
+
+  // Move focus into the dialog, keep Tab inside it, close on Escape, and
+  // return focus to the opener afterwards.
+  useEffect(() => {
+    if (!isOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    const focusables = () =>
+      Array.from(dialog?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
+    (focusables()[0] ?? dialog)?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && onCloseRef.current) {
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [isOpen]);
 
   // Cleanup portal container when no modals are open
   useEffect(() => {
@@ -66,15 +117,17 @@ export const Modal: React.FC<ModalProps> = ({
 
   return createPortal(
     <div
-      className={`fixed w-full h-full inset-0 z-[999] overflow-y-auto bg-black/50 transition-opacity duration-200 ease-in-out ${className}`}
+      ref={dialogRef}
+      tabIndex={-1}
+      className={`fixed w-full h-full inset-0 z-[999] overflow-y-auto bg-black/50 transition-opacity duration-200 ease-in-out outline-none ${className}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby={ariaLabelledBy}
+      aria-label={ariaLabelledBy ? undefined : ariaLabel}
     >
       <div
         ref={modalRef}
         className={`w-full h-full relative transform transition-all duration-200 ease-in-out z-[1000]`}
-        role="document"
       >
         {children}
       </div>

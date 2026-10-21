@@ -66,7 +66,7 @@
     --secondary-color-light: #fcd34d; /* lighter variant for backgrounds */
 
     --title-color: #333;
-    --text-color: #7c7c7c;
+    --text-color: #6b7280; /* darkened from #7c7c7c to meet 4.5:1 contrast on white */
     --link-color: #3b82f6;
     --head-color: #1f2937;
     --gray-color: #f8f8f8;
@@ -427,4 +427,19 @@
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none; /* Safari and Chrome */
+}
+
+/* Respect the visitor's motion preference: no animated entrances, shimmer or smooth scrolling. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

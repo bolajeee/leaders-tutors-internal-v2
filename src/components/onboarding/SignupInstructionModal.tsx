@@ -1,8 +1,8 @@
 "use client";
 
-import { BookOpen, GraduationCap, Wallet, X } from "lucide-react";
+import { BookOpen, GraduationCap, Wallet } from "lucide-react";
 import { Button } from "@/components/form";
-import { Modal } from "@/components/dialog-box/Modal";
+import ModalShell from "@/components/ui/ModalShell";
 import { formatAmount } from "@/services/paystack";
 
 interface SignupInstructionModalProps {
@@ -33,108 +33,83 @@ export default function SignupInstructionModal({
   onPayNow,
 }: SignupInstructionModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} closeOnOutsideClick={!isPaying}>
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
-          <div className="flex items-center justify-between p-6 border-b border-[var(--border-color)]">
-            <h2 className="text-lg font-bold text-[var(--title-color)] font-bold-custom">
-              Confirm your learning plan
-            </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isPaying}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-              aria-label="Close payment instructions"
-            >
-              <X className="w-5 h-5 text-gray-400" />
-            </button>
-          </div>
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Confirm your learning plan"
+      closeLabel="Close payment instructions"
+      dismissible={!isPaying}
+    >
+      <div className="space-y-4 p-6">
+        <p className="text-sm leading-6 text-slate-700">
+          Confirm your class and payment method. We will verify your email before opening secure checkout.
+        </p>
 
-          <div className="p-6 space-y-4">
-            <p className="text-sm text-[var(--text-color)]">
-              Confirm your class and payment method. We will verify your email
-              before opening secure checkout.
-            </p>
-
-            <div className="rounded-lg border border-[var(--border-color)] bg-[var(--gray-color)] p-4 space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-blue-50 text-[var(--primary-color)]">
-                  <GraduationCap className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[var(--text-secondary-color)]">
-                    Department
-                  </p>
-                  <p className="text-sm font-semibold text-[var(--title-color)]">
-                    {department || "Not selected"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-orange-50 text-[var(--secondary-color)]">
-                  <BookOpen className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[var(--text-secondary-color)]">
-                    Exam type
-                  </p>
-                  <p className="text-sm font-semibold text-[var(--title-color)]">
-                    {exam || "Not selected"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-green-50 text-emerald-600">
-                  <Wallet className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[var(--text-secondary-color)]">
-                    Amount to pay
-                  </p>
-                  <p className="text-lg font-bold text-[var(--title-color)]">
-                    {formatAmount(amount)}
-                  </p>
-                </div>
-              </div>
+        <dl className="space-y-3 rounded-lg border border-[var(--border-color)] bg-[var(--gray-color)] p-4">
+          <div className="flex items-start gap-3">
+            <span className="rounded-lg bg-blue-50 p-2 text-[var(--primary-color)]">
+              <GraduationCap className="h-4 w-4" aria-hidden />
+            </span>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-slate-600">Department</dt>
+              <dd className="text-sm font-semibold text-slate-900">{department || "Not selected"}</dd>
             </div>
-
-            <label className="flex flex-col gap-1 w-full">
-              <span className="text-sm font-medium text-[var(--title-color)]">
-                Payment Method
-              </span>
-              <select
-                value={paymentMethodId}
-                onChange={(event) => onPaymentMethodChange(event.target.value)}
-                disabled={isPaying}
-                className="w-full rounded-lg border border-[var(--border-color)] bg-white px-3 py-3 text-sm text-[var(--title-color)]"
-              >
-                <option value="">Select payment method</option>
-                {paymentMethodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              {paymentMethodError ? (
-                <span className="text-xs text-[var(--failed-color)]">
-                  {paymentMethodError}
-                </span>
-              ) : null}
-            </label>
-
-            <Button
-              type="button"
-              text="Continue to verification"
-              fullWidth
-              isLoading={isPaying}
-              onClick={onPayNow}
-            />
           </div>
+          <div className="flex items-start gap-3">
+            <span className="rounded-lg bg-orange-50 p-2 text-orange-700">
+              <BookOpen className="h-4 w-4" aria-hidden />
+            </span>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-slate-600">Class</dt>
+              <dd className="text-sm font-semibold text-slate-900">{exam || "Not selected"}</dd>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="rounded-lg bg-green-50 p-2 text-emerald-700">
+              <Wallet className="h-4 w-4" aria-hidden />
+            </span>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-slate-600">Amount to pay</dt>
+              <dd className="text-lg font-bold text-slate-900">{formatAmount(amount)}</dd>
+            </div>
+          </div>
+        </dl>
+
+        <div className="flex w-full flex-col gap-1">
+          <label htmlFor="signup-payment-method" className="text-sm font-medium text-slate-900">
+            Payment method
+          </label>
+          <select
+            id="signup-payment-method"
+            value={paymentMethodId}
+            onChange={(event) => onPaymentMethodChange(event.target.value)}
+            disabled={isPaying}
+            aria-invalid={Boolean(paymentMethodError)}
+            aria-describedby={paymentMethodError ? "signup-payment-method-error" : undefined}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900"
+          >
+            <option value="">Select payment method</option>
+            {paymentMethodOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {paymentMethodError ? (
+            <span id="signup-payment-method-error" role="alert" className="text-xs text-red-700">
+              {paymentMethodError}
+            </span>
+          ) : null}
         </div>
+
+        <Button
+          type="button"
+          text="Continue to verification"
+          fullWidth
+          isLoading={isPaying}
+          onClick={onPayNow}
+        />
       </div>
-    </Modal>
+    </ModalShell>
   );
 }
