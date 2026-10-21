@@ -62,6 +62,7 @@ export const hero = {
   eyebrow: "Online video classes",
   headline: "A good education is the foundation of everything you build.",
   highlight: "foundation",
+  image: { src: "/body-pix/auth-bg.png", alt: "A young man and woman smiling as they study together on a tablet" },
   intro:
     "Leaders Tutors is an online learning platform that offers video-based classes, lesson notes and practice, organised by subject, term and week.",
   primaryCta: { label: "Start as a student", href: "/sign-up" },
@@ -75,13 +76,31 @@ export const stats = [
   { value: "112,124", label: "Active students" },
 ] as const;
 
-export const classPreviews = [
-  { level: "Basic 1", subject: "Mathematics", tutor: "Paul Emmanuel" },
-  { level: "Basic 2", subject: "Use of English", tutor: "Samson Ayorinde" },
-  { level: "JSS 1", subject: "Biology", tutor: "Barry Job" },
-  { level: "JSS 2", subject: "Business Studies", tutor: "Yakubu Ezekiel" },
-  { level: "JSS 2", subject: "Mathematics", tutor: "Yakubu Ezekiel" },
-] as const;
+export const popularIntro =
+  "Explore e-learning opportunities that bring education to your fingertips, offering flexibility and accessibility. Enrich your journey with the best in online education, designed to cater to the unique needs of learners in Nigeria.";
+
+export interface ClassPreview {
+  level: string;
+  subject: string;
+  tutor: string;
+  tutorId: string;
+  term: string;
+  week: string;
+  duration: string;
+  views: number;
+  /** Class photo path under /public. Omit until a photo is supplied; a branded panel is shown instead. */
+  image?: string;
+}
+
+const sampleClass = { tutorId: "Lts202402031023", term: "First Term", week: "Week 1", duration: "00:01:04", views: 0 } as const;
+
+export const classPreviews: readonly ClassPreview[] = [
+  { ...sampleClass, level: "Basic 1", subject: "Mathematics", tutor: "Paul Emmanuel" },
+  { ...sampleClass, level: "Basic 2", subject: "Use Of English", tutor: "Samson Ayorinde" },
+  { ...sampleClass, level: "JSS 1", subject: "Biology", tutor: "Barry Job" },
+  { ...sampleClass, level: "JSS 2", subject: "Business Studies", tutor: "Yakubu Ezekiel" },
+  { ...sampleClass, level: "JSS 2", subject: "Mathematics", tutor: "Yakubu Ezekiel" },
+];
 
 export const categories = [
   { name: "Basic", count: 3 },

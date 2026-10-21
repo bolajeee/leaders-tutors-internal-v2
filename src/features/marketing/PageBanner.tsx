@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import AnimatedBackdrop from "./AnimatedBackdrop";
 
 interface PageBannerProps {
   eyebrow: string;
@@ -12,10 +13,7 @@ interface PageBannerProps {
 export default function PageBanner({ eyebrow, title, intro, cta = { label: "Start as a student", href: "/sign-up" } }: PageBannerProps) {
   return (
     <section className="relative isolate bg-[#292b72] px-5 pb-16 pt-36 text-white sm:pt-40 lg:px-8 lg:pb-20">
-      <div className="absolute inset-0 -z-10 overflow-hidden" aria-hidden>
-        <div className="absolute -right-32 top-6 h-96 w-96 rounded-full bg-[#f39a2e]/20 blur-3xl" />
-        <div className="absolute -left-24 bottom-0 h-72 w-72 rounded-full bg-indigo-400/20 blur-3xl" />
-      </div>
+      <AnimatedBackdrop />
       <div className="mx-auto max-w-7xl">
         <p className="text-xs font-bold uppercase tracking-[.2em] text-orange-300">{eyebrow}</p>
         <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight tracking-[-.03em] sm:text-6xl">{title}</h1>

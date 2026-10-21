@@ -1,13 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   ArrowRight,
+  BadgeCheck,
   BookOpenCheck,
   CheckCircle2,
   ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
+  Eye,
   GraduationCap,
+  Heart,
   Mail,
   MapPin,
   Phone,
@@ -23,10 +29,13 @@ import {
   hero,
   howItWorks,
   partners,
+  popularIntro,
   stats,
   telHref,
   testimonials,
+  type ClassPreview,
 } from "@/data/marketing";
+import AnimatedBackdrop from "./AnimatedBackdrop";
 
 const eyebrow = "text-xs font-bold uppercase tracking-[.2em]";
 
@@ -34,10 +43,7 @@ export function Hero() {
   const [before, after] = hero.headline.split(hero.highlight);
   return (
     <section className="relative isolate bg-[#292b72] px-5 pb-20 pt-36 text-white sm:pt-44 lg:px-8 lg:pb-28">
-      <div className="absolute inset-0 -z-10 overflow-hidden" aria-hidden>
-        <div className="absolute -right-40 top-10 h-[560px] w-[560px] rounded-full bg-[#f39a2e]/20 blur-3xl" />
-        <div className="absolute -left-24 bottom-0 h-80 w-80 rounded-full bg-indigo-400/20 blur-3xl" />
-      </div>
+      <AnimatedBackdrop />
       <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1.08fr_.92fr]">
         <div>
           <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[.18em] text-orange-200">
@@ -51,7 +57,7 @@ export function Hero() {
           </h1>
           <p className="mt-7 max-w-2xl text-lg leading-8 text-indigo-100">{hero.intro}</p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <Link href={hero.primaryCta.href} className="inline-flex min-h-13 items-center justify-center gap-2 rounded-xl bg-[#f39a2e] px-6 py-3.5 font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-[#ffad49]">
+            <Link href={hero.primaryCta.href} className="animate-cta-pulse inline-flex min-h-13 items-center justify-center gap-2 rounded-xl bg-[#f39a2e] px-6 py-3.5 font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:bg-[#ffad49]">
               {hero.primaryCta.label}
               <ArrowRight className="h-5 w-5" aria-hidden />
             </Link>
@@ -61,30 +67,33 @@ export function Hero() {
             </Link>
           </div>
         </div>
-        <div className="relative mx-auto w-full max-w-xl">
-          <div className="rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl backdrop-blur">
-            <div className="rounded-[1.5rem] bg-white p-6 text-slate-900 sm:p-8">
-              <div className="flex items-center justify-between">
-                <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-[#3e4095]">Your curriculum</span>
-                <GraduationCap className="text-[#f39a2e]" aria-hidden />
-              </div>
-              <p className="mt-7 text-2xl font-bold">Your learning, clearly organised.</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Move naturally from a subject to the right term, week and lesson.</p>
-              <ul className="mt-7 space-y-3">
-                {["Basic Science · First Term · Week 1", "Mathematics · First Term · Week 2", "English Studies · First Term · Week 1"].map((item, index) => (
-                  <li key={item} className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                    <span className={`grid h-10 w-10 place-items-center rounded-xl ${index === 0 ? "bg-[#3e4095] text-white" : "bg-white text-[#3e4095]"}`}>
-                      <BookOpenCheck className="h-5 w-5" aria-hidden />
-                    </span>
-                    <span className="flex-1">
-                      <span className="block text-sm font-semibold">{item}</span>
-                      <span className="mt-1 block text-xs text-slate-600">Video, notes and practice</span>
-                    </span>
-                    <ArrowRight className="h-4 w-4 text-slate-500" aria-hidden />
-                  </li>
-                ))}
-              </ul>
-            </div>
+        <div className="relative mx-auto w-full max-w-md lg:max-w-lg">
+          <div className="animate-glow-pulse absolute -inset-4 rounded-[2.5rem] bg-linear-to-tr from-[#f39a2e] to-indigo-400 opacity-60 blur-2xl" aria-hidden />
+          <div className="relative aspect-4/5 overflow-hidden rounded-4xl border border-white/20 bg-indigo-900 shadow-2xl">
+            <Image
+              src={hero.image.src}
+              alt={hero.image.alt}
+              fill
+              priority
+              sizes="(min-width: 1024px) 512px, 90vw"
+              className="object-cover object-[50%_18%]"
+            />
+          </div>
+          <div className="animate-float absolute -left-3 bottom-8 flex items-center gap-3 rounded-2xl bg-white p-3.5 pr-5 text-slate-900 shadow-xl sm:-left-8">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#3e4095] text-white">
+              <BookOpenCheck className="h-5 w-5" aria-hidden />
+            </span>
+            <span>
+              <span className="block text-sm font-bold">Video, notes and practice</span>
+              <span className="block text-xs text-slate-600">By subject, term and week</span>
+            </span>
+          </div>
+          <div className="animate-float absolute -right-3 top-8 rounded-2xl bg-white px-4 py-3 text-slate-900 shadow-xl [animation-delay:-3s] sm:-right-6">
+            <span className="flex items-center gap-2 text-xl font-bold text-[#3e4095]">
+              <GraduationCap className="h-5 w-5 text-[#f39a2e]" aria-hidden />
+              {stats[3].value}
+            </span>
+            <span className="block text-xs text-slate-600">{stats[3].label}</span>
           </div>
         </div>
       </div>
@@ -110,40 +119,123 @@ export function Stats() {
   );
 }
 
+const cardTints = [
+  "from-[#3e4095] to-[#5b5fc7]",
+  "from-[#d97706] to-[#f39a2e]",
+  "from-[#0f766e] to-[#14b8a6]",
+  "from-[#7e22ce] to-[#a855f7]",
+  "from-[#be123c] to-[#e11d48]",
+];
+
+const initials = (name: string) =>
+  name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+function ClassCard({ item, index }: { item: ClassPreview; index: number }) {
+  const [saved, setSaved] = useState(false);
+  const details = [
+    ["Subject", item.subject],
+    ["Term", item.term],
+    ["Week", item.week],
+    ["Duration", item.duration],
+  ];
+  return (
+    <article className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+      <div className="relative h-44 overflow-hidden bg-slate-100">
+        {item.image ? (
+          <Image src={item.image} alt="" fill sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 80vw" className="object-cover" />
+        ) : (
+          <div className={`grid h-full place-items-center bg-linear-to-br ${cardTints[index % cardTints.length]}`} aria-hidden>
+            <GraduationCap className="h-16 w-16 text-white/85" />
+          </div>
+        )}
+        <span className="absolute left-0 top-3 rounded-r bg-red-700 px-3 py-1 text-[11px] font-bold uppercase text-white">{item.level}</span>
+      </div>
+      <div className="flex items-center gap-3 px-4 pt-4">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-sm font-bold text-[#3e4095]" aria-hidden>
+          {initials(item.tutor)}
+        </span>
+        <div className="min-w-0">
+          <h3 className="flex items-center gap-1.5 text-base font-bold text-slate-950">
+            <span className="truncate">{item.tutor}</span>
+            <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-700" aria-label="Verified tutor" />
+          </h3>
+          <p className="truncate text-xs text-slate-700">ID:{item.tutorId}</p>
+        </div>
+      </div>
+      <dl className="space-y-2.5 px-5 py-5 text-xs">
+        {details.map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-4">
+            <dt className="text-slate-600">{label}:</dt>
+            <dd className="text-right text-slate-800">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="mt-auto flex items-stretch border-t border-slate-200 text-xs text-slate-700">
+        <span className="flex flex-1 items-center gap-1.5 px-4 py-3.5 uppercase">
+          <Eye className="h-3.5 w-3.5" aria-hidden />
+          {item.views} views
+        </span>
+        <button
+          type="button"
+          onClick={() => setSaved((value) => !value)}
+          aria-pressed={saved}
+          aria-label={`Save ${item.level} ${item.subject}`}
+          className="grid w-14 place-items-center border-l border-slate-200 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#3e4095]"
+        >
+          <Heart className={`h-5 w-5 transition ${saved ? "fill-red-600 text-red-600" : "text-slate-600"}`} aria-hidden />
+        </button>
+      </div>
+    </article>
+  );
+}
+
 export function PopularClasses({ showAllLink = false }: { showAllLink?: boolean }) {
+  const track = useRef<HTMLUListElement>(null);
+  const slide = (direction: 1 | -1) => {
+    const element = track.current;
+    element?.scrollBy?.({ left: direction * element.clientWidth, behavior: "smooth" });
+  };
+  const arrow =
+    "grid h-10 w-10 place-items-center rounded-full bg-slate-200/70 text-[#3e4095] transition hover:bg-[#3e4095] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3e4095]";
+
   return (
     <section aria-labelledby="classes-heading" className="bg-[#f7f7fb] px-5 py-24 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="max-w-2xl">
-          <p className={`${eyebrow} text-amber-800`}>Popular classes</p>
-          <h2 id="classes-heading" className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-5xl">Built around the learner you are becoming.</h2>
-          <p className="mt-4 leading-7 text-slate-600">A taste of the classes students open every day, from Basic school to junior secondary.</p>
+        <div className="mx-auto max-w-3xl text-center">
+          <svg viewBox="0 0 56 14" className="mx-auto h-3.5 w-14 text-[#f39a2e]" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden>
+            <path d="M3 8Q9.5 -1 16 7T29 7T42 7T53 7" />
+          </svg>
+          <h2 id="classes-heading" className="mt-5 text-3xl font-bold tracking-tight text-slate-800 sm:text-4xl">Our Popular Topics And Views</h2>
+          <p className="mt-5 leading-7 text-slate-700">{popularIntro}</p>
         </div>
-        <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <ul ref={track} className="no-scrollbar mt-12 flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2">
           {classPreviews.map((item, index) => (
-            <li key={`${item.level}-${item.subject}`}>
-              <article className="group h-full rounded-3xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-                <span className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold uppercase tracking-widest text-[#3e4095]">{item.level}</span>
-                <div className="my-6 grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-[#3e4095]" aria-hidden>
-                  <span className="text-xl font-bold">0{index + 1}</span>
-                </div>
-                <h3 className="text-xl font-bold">{item.subject}</h3>
-                <p className="mt-2 text-sm text-slate-600">Taught by {item.tutor}</p>
-                <Link href="/sign-up" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#3e4095]">
-                  Find your class
-                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden />
-                  <span className="sr-only">: {item.level} {item.subject}</span>
-                </Link>
-              </article>
+            <li key={`${item.level}-${item.subject}-${index}`} className="w-[80%] shrink-0 snap-start sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)]">
+              <ClassCard item={item} index={index} />
             </li>
           ))}
         </ul>
-        {showAllLink && (
-          <Link href="/available-tutorials" className="mt-10 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[#3e4095] px-6 font-semibold text-white hover:bg-[#2c2f7a]">
-            Explore all classes
-            <ArrowRight className="h-5 w-5" aria-hidden />
-          </Link>
-        )}
+        <div className="mt-8 flex items-center justify-between gap-4">
+          <div className="flex gap-3">
+            <button type="button" onClick={() => slide(-1)} aria-label="Previous classes" className={arrow}>
+              <ChevronsLeft className="h-5 w-5" aria-hidden />
+            </button>
+            <button type="button" onClick={() => slide(1)} aria-label="Next classes" className={arrow}>
+              <ChevronsRight className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+          {showAllLink && (
+            <Link href="/available-tutorials" className="inline-flex min-h-12 items-center gap-2 rounded-md bg-[#3e4095] px-6 font-semibold text-white transition hover:bg-[#2c2f7a]">
+              Explore all Classes
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          )}
+        </div>
         <div className="mt-12">
           <h3 className="text-sm font-semibold text-slate-800">Browse by category</h3>
           <ul className="mt-4 flex flex-wrap gap-3">
@@ -375,7 +467,7 @@ export function Contact() {
 export function CallToAction() {
   return (
     <section aria-label="Get started" className="px-5 pb-24 lg:px-8">
-      <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#f39a2e] p-8 sm:p-12 lg:flex lg:items-center lg:justify-between">
+      <div className="mx-auto max-w-7xl overflow-hidden aurora-orange rounded-4xl p-8 sm:p-12 lg:flex lg:items-center lg:justify-between">
         <div>
           <p className={`${eyebrow} text-slate-900`}>Ready when you are</p>
           <h2 className="mt-4 max-w-2xl text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Create a student account and start this week.</h2>
