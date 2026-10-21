@@ -14,40 +14,59 @@ describe("tutorials page", () => {
   describe("active student", () => {
     beforeEach(() => signInAs("active"));
 
-    it("opens the first subject, term and week and offers lessons", async () => {
+    it("lists subjects with their course images and opens nothing until one is chosen", async () => {
       renderWithQuery(<Tutorials />);
-      expect(await screen.findByRole("button", { name: /basic science/i })).toHaveAttribute("aria-expanded", "true");
-      expect(screen.getByRole("button", { name: /first term/i })).toHaveAttribute("aria-expanded", "true");
-      expect(screen.getByRole("button", { name: /week 1/i })).toHaveAttribute("aria-expanded", "true");
-      const start = await screen.findByRole("link", { name: /start lesson: living and non-living things/i });
-      expect(start).toHaveAttribute("href", "/tutorials/living-things");
+      const science = await screen.findByRole("button", { name: /basic science/i });
+      expect(science).toHaveAttribute("aria-haspopup", "dialog");
+      expect(within(science).getByRole("presentation", { hidden: true })).toHaveAttribute("src", "/course-covers/basic-science.svg");
+      // No course image uploaded: the icon placeholder stands in.
+      expect(within(screen.getByRole("button", { name: /social studies/i })).queryByRole("presentation", { hidden: true })).toBeNull();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("walks subject → term → week → lesson", async () => {
+    it("previews a course's terms in a modal and lists topics in a dropdown", async () => {
       const user = userEvent.setup();
       renderWithQuery(<Tutorials />);
-      await user.click(await screen.findByRole("button", { name: /second term/i }));
-      // The first week of a newly opened term is expanded for you.
-      expect(await screen.findByRole("link", { name: /forms of energy/i })).toHaveAttribute("href", "/tutorials/energy");
+      await user.click(await screen.findByRole("button", { name: /basic science/i }));
+
+      const dialog = await screen.findByRole("dialog", { name: /basic science/i });
+      expect(within(dialog).getByText(/3 terms · 5 topics/i)).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: /first term/i })).toHaveAttribute("aria-expanded", "true");
+      expect(within(dialog).getByRole("button", { name: /second term/i })).toHaveAttribute("aria-expanded", "false");
+      expect(within(dialog).getByRole("link", { name: /start lesson: living and non-living things/i })).toHaveAttribute(
+        "href",
+        "/tutorials/living-things",
+      );
+      expect(within(dialog).getByText(/lessons for this week are coming soon/i)).toBeInTheDocument();
+
+      await user.click(within(dialog).getByRole("button", { name: /second term/i }));
+      expect(within(dialog).getByRole("link", { name: /forms of energy/i })).toHaveAttribute("href", "/tutorials/energy");
+      expect(within(dialog).getByRole("button", { name: /first term/i })).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("closes with the close button and Escape", async () => {
+      const user = userEvent.setup();
+      renderWithQuery(<Tutorials />);
+      await user.click(await screen.findByRole("button", { name: /mathematics/i }));
+      await user.click(await screen.findByRole("button", { name: /close course/i }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
       await user.click(screen.getByRole("button", { name: /mathematics/i }));
-      await user.click(await screen.findByRole("button", { name: /week 2/i }));
-      expect(await screen.findByRole("link", { name: /introduction to fractions/i })).toHaveAttribute("href", "/tutorials/fractions");
+      await user.keyboard("{Escape}");
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("opens the subject named in the URL", async () => {
+    it("opens the course named in the URL", async () => {
       nav.search = "subject=mathematics";
       renderWithQuery(<Tutorials />);
-      expect(await screen.findByRole("button", { name: /mathematics/i })).toHaveAttribute("aria-expanded", "true");
-      expect(screen.getByRole("button", { name: /basic science/i })).toHaveAttribute("aria-expanded", "false");
+      const dialog = await screen.findByRole("dialog", { name: /mathematics/i });
+      expect(within(dialog).getByRole("link", { name: /whole numbers/i })).toHaveAttribute("href", "/tutorials/whole-numbers");
     });
 
-    it("says when a week or subject has no content yet", async () => {
+    it("says when a subject has no content yet", async () => {
       const user = userEvent.setup();
       renderWithQuery(<Tutorials />);
-      await user.click(await screen.findByRole("button", { name: /week 4/i }));
-      expect(await screen.findByText(/lessons for this week are coming soon/i)).toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: /social studies/i }));
+      await user.click(await screen.findByRole("button", { name: /social studies/i }));
       expect(await screen.findByText(/this subject is being prepared/i)).toBeInTheDocument();
     });
 
@@ -74,7 +93,7 @@ describe("tutorials page", () => {
       const user = userEvent.setup();
       renderWithQuery(<Tutorials />);
       expect(await screen.findByText(/your learning access has expired/i)).toBeInTheDocument();
-      expect(await screen.findByRole("button", { name: /basic science/i })).toHaveAttribute("aria-expanded", "true");
+      await user.click(await screen.findByRole("button", { name: /basic science/i }));
       expect(screen.queryByRole("link", { name: /start lesson/i })).not.toBeInTheDocument();
 
       await user.click(await screen.findByRole("button", { name: /unlock living and non-living things/i }));

@@ -58,6 +58,8 @@ export interface CurriculumSubject {
   id: string;
   name: string;
   description: string;
+  /** Course image uploaded for the subject; absent until one is uploaded. */
+  imageUrl?: string;
   /** Percentage of the subject's lessons completed (0–100). */
   progress: number;
   terms: AcademicTerm[];

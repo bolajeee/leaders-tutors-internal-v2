@@ -4,7 +4,7 @@ import { categories, contact, footer, footerLinks, siteName, social, telHref } f
 
 export default function SiteFooter() {
   return (
-    <footer className="bg-slate-950 px-5 py-14 text-slate-300 lg:px-8">
+    <footer className="bg-[#292b72]/95 px-5 py-14 text-slate-300 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-10 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-1">
           <Image src="/body-pix/logo.png" alt={siteName} width={154} height={54} className="h-11 w-auto rounded-lg bg-white px-2" />
@@ -32,6 +32,14 @@ export default function SiteFooter() {
             ))}
           </ul>
         </div>
+
+          <div>
+          <h2 className="font-semibold text-white">Student access</h2>
+          <ul className="mt-4 space-y-2 text-sm">
+            <li><Link href="/login" className="text-slate-300 hover:text-white">My account</Link></li>
+            <li><Link href="/sign-up" className="text-slate-300 hover:text-white">Create account</Link></li>
+          </ul>
+        </div>
         <div>
           <h2 className="font-semibold text-white">Contact</h2>
           <address className="mt-4 space-y-2 text-sm not-italic text-slate-300">
@@ -41,13 +49,7 @@ export default function SiteFooter() {
             <p><a className="hover:text-white" href={social.whatsapp} target="_blank" rel="noopener noreferrer">WhatsApp us</a></p>
           </address>
         </div>
-        <div>
-          <h2 className="font-semibold text-white">Student access</h2>
-          <ul className="mt-4 space-y-2 text-sm">
-            <li><Link href="/login" className="text-slate-300 hover:text-white">My account</Link></li>
-            <li><Link href="/sign-up" className="text-slate-300 hover:text-white">Create account</Link></li>
-          </ul>
-        </div>
+      
       </div>
       <p className="mx-auto mt-12 max-w-7xl border-t border-white/10 pt-6 text-xs text-slate-400">
         {footer.copyright}{" "}

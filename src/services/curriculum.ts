@@ -180,6 +180,9 @@ export const normalizeCurriculum = (payload: unknown): CurriculumSubject[] => {
         id,
         name,
         description: text(subject, ["description", "summary"]),
+        imageUrl:
+          text(subject, ["imageUrl", "image", "subjectImage", "subject_image", "coverImage", "picture", "thumbnail"]) ||
+          undefined,
         progress: Number.isFinite(progress) ? Math.min(100, Math.max(0, Math.round(progress))) : 0,
         terms,
       },

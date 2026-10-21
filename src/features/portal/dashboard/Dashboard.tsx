@@ -18,6 +18,7 @@ import { useAuthStore } from "@/store/authStore";
 import WalletLoadModal from "@/components/wallet/WalletLoadModal";
 import SubscriptionModal from "@/components/subscription/SubscriptionModal";
 import { ProgressBar } from "@/components/ui";
+import SubjectImage from "@/components/ui/SubjectImage";
 import { EmptyPanel, ErrorState, ExpiredNotice, LoadingRows } from "@/components/ui/State";
 import { useCurriculum, useSubscription } from "@/hooks/usePortalData";
 import { countLessons } from "@/services/curriculum";
@@ -185,9 +186,7 @@ export default function Dashboard() {
                         className="flex flex-col gap-3 px-6 py-5 hover:bg-slate-50 focus-visible:outline-2 sm:flex-row sm:items-center sm:gap-6"
                       >
                         <span className="flex min-w-0 flex-1 items-center gap-4">
-                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-50 text-[var(--primary-color)]">
-                            <BookOpen className="h-4 w-4" aria-hidden />
-                          </span>
+                          <SubjectImage src={subject.imageUrl} className="h-12 w-16 rounded-xl" />
                           <span className="min-w-0">
                             <span className="block truncate text-sm font-semibold text-slate-900">{subject.name}</span>
                             <span className="block text-xs text-slate-600">

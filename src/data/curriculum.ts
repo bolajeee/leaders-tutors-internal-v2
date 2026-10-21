@@ -33,6 +33,8 @@ interface SubjectSeed {
   id: string;
   name: string;
   description: string;
+  /** Omit to model a subject whose course image has not been uploaded yet. */
+  imageUrl?: string;
   progress: number;
   terms: TermSeed[];
 }
@@ -41,6 +43,7 @@ const buildSubject = (seed: SubjectSeed): CurriculumSubject => ({
   id: seed.id,
   name: seed.name,
   description: seed.description,
+  imageUrl: seed.imageUrl,
   progress: seed.progress,
   terms: seed.terms.map((term, termIndex): AcademicTerm => {
     const termId = `${seed.id}-term-${termIndex + 1}`;
@@ -101,6 +104,7 @@ export const curriculumFixtures: CurriculumSubject[] = [
     name: "Basic Science",
     description:
       "Understand the body, the environment, matter, and energy through practical examples.",
+    imageUrl: "/course-covers/basic-science.svg",
     progress: 42,
     terms: [
       {
@@ -188,6 +192,7 @@ export const curriculumFixtures: CurriculumSubject[] = [
     name: "Mathematics",
     description:
       "Build confidence with numbers, shapes, measurement, and everyday problem solving.",
+    imageUrl: "/course-covers/mathematics.svg",
     progress: 68,
     terms: [
       {
@@ -240,6 +245,7 @@ export const curriculumFixtures: CurriculumSubject[] = [
     name: "English Studies",
     description:
       "Strengthen reading, writing, grammar, listening, and confident communication.",
+    imageUrl: "/course-covers/english.svg",
     progress: 31,
     terms: [
       {
