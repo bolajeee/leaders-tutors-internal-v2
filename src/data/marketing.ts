@@ -6,14 +6,57 @@ import { SUPPORT_CONTACT } from "@/lib/config";
 
 export const siteName = "Leaders Tutors";
 
+/** Mirrors the live site's menu: Home, How it Works, Tutorial, Our Agents, Our Partners, FAQ, Contact Us, My Account. */
 export const navLinks = [
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Classes", href: "#classes" },
-  { label: "Why Leaders Tutors", href: "#about" },
-  { label: "Partners", href: "#partners" },
-  { label: "FAQ", href: "#faq" },
-  { label: "Contact", href: "#contact" },
+  { label: "Home", href: "/" },
+  { label: "How it works", href: "/how-it-works" },
+  { label: "Tutorials", href: "/available-tutorials" },
+  { label: "Our agents", href: "/our-agents" },
+  { label: "Our partners", href: "/our-partners" },
+  { label: "FAQ", href: "/faq" },
+  { label: "Contact us", href: "/contact" },
 ] as const;
+
+export const siteIntro =
+  "Welcome to Leaders Tutors – where education meets innovation! Our cutting-edge application redefines the learning experience with a dynamic Education Video Learning system.";
+
+/** Banner copy for each inner page. */
+export const pageBanners = {
+  howItWorks: { eyebrow: "How it works", title: "How it Works", intro: siteIntro },
+  tutorials: { eyebrow: "Available tutorials", title: "Available Tutorials", intro: siteIntro },
+  agents: { eyebrow: "Our agents", title: "Our Agents", intro: siteIntro },
+  partners: { eyebrow: "Our partners", title: "Our Partners", intro: siteIntro },
+  faq: { eyebrow: "FAQ", title: "Frequently Asked Questions", intro: siteIntro },
+  contact: {
+    eyebrow: "Contact us",
+    title: "Contact Us",
+    intro: "Call +(234) 708 701 3213 or email Info@leaderstutors.com for your Online Video Classes: Basic, Junior, Science, Commercial and Art.",
+  },
+} as const;
+
+export const footerLinks = [
+  { label: "How it works", href: "/how-it-works" },
+  { label: "Tutorial", href: "/available-tutorials" },
+  { label: "Our agents", href: "/our-agents" },
+  { label: "Our partners", href: "/our-partners" },
+  { label: "Contact us", href: "/contact" },
+  { label: "FAQs", href: "/faq" },
+] as const;
+
+/** Only channels the live site publishes a real destination for. */
+export const social = {
+  whatsapp: "https://api.whatsapp.com/send?phone=2348127000262&text=Hello%20Leaders%20Tutors",
+  developer: { name: "AfooTECH IT Solution", href: "https://www.afootechglobal.com" },
+} as const;
+
+export const agents = {
+  intro:
+    "Agents help students and families get started with Leaders Tutors. To become an agent, get in touch with the team and we will walk you through the next steps.",
+  cta: { label: "Become an agent", href: "/contact" },
+} as const;
+
+export const partnersIntro =
+  "Leaders Tutors learns and grows alongside its partners to bring accessible video learning to students across Nigeria.";
 
 export const hero = {
   eyebrow: "Online video classes",
@@ -22,7 +65,7 @@ export const hero = {
   intro:
     "Leaders Tutors is an online learning platform that offers video-based classes, lesson notes and practice, organised by subject, term and week.",
   primaryCta: { label: "Start as a student", href: "/sign-up" },
-  secondaryCta: { label: "Explore classes", href: "#classes" },
+  secondaryCta: { label: "Explore classes", href: "/available-tutorials" },
 } as const;
 
 export const stats = [
@@ -87,7 +130,7 @@ export const contact = {
 
 export const footer = {
   blurb: "Education meets innovation through accessible video learning for students across Nigeria.",
-  copyright: "© 2023–2026 Leaders Tutors. Developed by AfooTECH IT Solution.",
+  copyright: "© 2023–2026 Leaders Tutors. All rights reserved. Developed by",
 } as const;
 
 /** Digits only, for tel: links. */

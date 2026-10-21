@@ -55,10 +55,10 @@ export function Hero() {
               {hero.primaryCta.label}
               <ArrowRight className="h-5 w-5" aria-hidden />
             </Link>
-            <a href={hero.secondaryCta.href} className="inline-flex min-h-13 items-center justify-center gap-2 rounded-xl border border-white/30 px-6 py-3.5 font-semibold text-white hover:bg-white/10">
+            <Link href={hero.secondaryCta.href} className="inline-flex min-h-13 items-center justify-center gap-2 rounded-xl border border-white/30 px-6 py-3.5 font-semibold text-white hover:bg-white/10">
               <PlayCircle className="h-5 w-5" aria-hidden />
               {hero.secondaryCta.label}
-            </a>
+            </Link>
           </div>
         </div>
         <div className="relative mx-auto w-full max-w-xl">
@@ -94,7 +94,10 @@ export function Hero() {
 
 export function Stats() {
   return (
-    <section aria-label="Platform statistics" className="border-b border-slate-100 bg-white px-5 py-9 lg:px-8">
+    <section aria-labelledby="stats-heading" className="border-b border-slate-100 bg-white px-5 py-12 lg:px-8">
+      <h2 id="stats-heading" className="mx-auto mb-8 max-w-7xl text-sm font-semibold text-slate-700">
+        Stats that explain everything about <span className="text-[#3e4095]">our success</span>
+      </h2>
       <dl className="mx-auto grid max-w-7xl grid-cols-2 gap-6 lg:grid-cols-4">
         {stats.map((stat) => (
           <div key={stat.label}>
@@ -107,13 +110,13 @@ export function Stats() {
   );
 }
 
-export function PopularClasses() {
+export function PopularClasses({ showAllLink = false }: { showAllLink?: boolean }) {
   return (
-    <section id="classes" className="scroll-mt-20 bg-[#f7f7fb] px-5 py-24 lg:px-8">
+    <section aria-labelledby="classes-heading" className="bg-[#f7f7fb] px-5 py-24 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="max-w-2xl">
           <p className={`${eyebrow} text-amber-800`}>Popular classes</p>
-          <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-5xl">Built around the learner you are becoming.</h2>
+          <h2 id="classes-heading" className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-5xl">Built around the learner you are becoming.</h2>
           <p className="mt-4 leading-7 text-slate-600">A taste of the classes students open every day, from Basic school to junior secondary.</p>
         </div>
         <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -135,6 +138,12 @@ export function PopularClasses() {
             </li>
           ))}
         </ul>
+        {showAllLink && (
+          <Link href="/available-tutorials" className="mt-10 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[#3e4095] px-6 font-semibold text-white hover:bg-[#2c2f7a]">
+            Explore all classes
+            <ArrowRight className="h-5 w-5" aria-hidden />
+          </Link>
+        )}
         <div className="mt-12">
           <h3 className="text-sm font-semibold text-slate-800">Browse by category</h3>
           <ul className="mt-4 flex flex-wrap gap-3">

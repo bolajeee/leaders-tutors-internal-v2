@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { navLinks, siteName } from "@/data/marketing";
@@ -9,6 +10,8 @@ import { navLinks, siteName } from "@/data/marketing";
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
+  const pathname = usePathname();
+  const current = (href: string) => (pathname === href ? ("page" as const) : undefined);
 
   useEffect(() => {
     if (!open) return;
@@ -34,16 +37,16 @@ export default function SiteHeader() {
         <Link href="/" className="rounded-xl bg-white px-3 py-2" aria-label={`${siteName} home`}>
           <Image src="/body-pix/logo.png" alt={siteName} width={154} height={54} className="h-10 w-auto" priority />
         </Link>
-        <nav className="hidden items-center gap-7 lg:flex" aria-label="Main navigation">
+        <nav className="hidden items-center gap-5 xl:gap-7 lg:flex" aria-label="Main navigation">
           {navLinks.map((link) => (
-            <a key={link.href} href={link.href} className="rounded-md text-sm font-medium text-white/90 transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+            <Link key={link.href} href={link.href} aria-current={current(link.href)} className="rounded-md border-b-2 border-transparent py-1 text-sm font-medium text-white/90 transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white aria-[current=page]:border-[#f39a2e] aria-[current=page]:text-white">
               {link.label}
-            </a>
+            </Link>
           ))}
         </nav>
         <div className="hidden items-center gap-3 lg:flex">
           <Link href="/login" className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10">
-            Log in
+            My account
           </Link>
           <Link href="/sign-up" className="rounded-xl bg-[#f39a2e] px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-orange-950/20 transition hover:-translate-y-0.5 hover:bg-[#ffad49]">
             Start learning
@@ -65,13 +68,13 @@ export default function SiteHeader() {
         <nav id="mobile-navigation" aria-label="Mobile navigation" className="border-t border-white/10 px-5 py-5 lg:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-1">
             {navLinks.map((link) => (
-              <a key={link.href} href={link.href} onClick={() => setOpen(false)} className="rounded-xl px-3 py-3 text-sm text-white/90 hover:bg-white/10">
+              <Link key={link.href} href={link.href} aria-current={current(link.href)} onClick={() => setOpen(false)} className="rounded-xl px-3 py-3 text-sm text-white/90 hover:bg-white/10 aria-[current=page]:bg-white/10 aria-[current=page]:font-semibold aria-[current=page]:text-white">
                 {link.label}
-              </a>
+              </Link>
             ))}
             <div className="mt-3 grid grid-cols-2 gap-3">
               <Link href="/login" className="rounded-xl border border-white/30 px-4 py-3 text-center text-sm font-semibold">
-                Log in
+                My account
               </Link>
               <Link href="/sign-up" className="rounded-xl bg-[#f39a2e] px-4 py-3 text-center text-sm font-semibold text-slate-950">
                 Start learning
