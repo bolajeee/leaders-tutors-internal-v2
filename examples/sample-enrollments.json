@@ -1,0 +1,173 @@
+[
+  {
+    "enrollmentId": "ENR-2026-001",
+    "classId": "EXT-IGCSE-MATH-001",
+    "student": {
+      "studentId": "STU-001",
+      "name": "Alice Thompson",
+      "email": "alice.thompson@example.com",
+      "phone": "+1-555-0101",
+      "dateOfBirth": "2009-03-15",
+      "currentGrade": "Grade 10"
+    },
+    "enrollmentDate": "2026-08-15T10:30:00Z",
+    "paymentStatus": "Paid",
+    "paymentDetails": {
+      "totalAmount": 3500,
+      "amountPaid": 3500,
+      "paymentMethod": "Credit Card",
+      "invoiceNumber": "INV-2026-001"
+    },
+    "assessmentResults": {
+      "initialAssessment": {
+        "date": "2026-08-10",
+        "score": 75,
+        "level": "Intermediate",
+        "notes": "Strong foundation in algebra, needs work on geometry"
+      }
+    },
+    "attendance": [
+      {
+        "date": "2026-09-01",
+        "status": "Present",
+        "notes": ""
+      },
+      {
+        "date": "2026-09-05",
+        "status": "Present",
+        "notes": ""
+      }
+    ],
+    "progressReports": [],
+    "examRegistration": {
+      "registered": true,
+      "examSession": "May/June 2027",
+      "candidateNumber": "CAN-2027-12345",
+      "examCenter": "Cambridge Assessment Center - Downtown"
+    },
+    "status": "Active",
+    "notes": "Parent requested extra practice materials"
+  },
+  {
+    "enrollmentId": "ENR-2026-002",
+    "classId": "EXT-SAT-PREP-001",
+    "student": {
+      "studentId": "STU-002",
+      "name": "Robert Martinez",
+      "email": "robert.martinez@example.com",
+      "phone": "+1-555-0102",
+      "dateOfBirth": "2008-11-22",
+      "currentGrade": "Grade 11"
+    },
+    "enrollmentDate": "2026-05-20T14:15:00Z",
+    "paymentStatus": "Paid",
+    "paymentDetails": {
+      "totalAmount": 2400,
+      "amountPaid": 2400,
+      "paymentMethod": "Bank Transfer",
+      "invoiceNumber": "INV-2026-002"
+    },
+    "assessmentResults": {
+      "initialAssessment": {
+        "date": "2026-05-15",
+        "score": 1200,
+        "level": "Advanced",
+        "notes": "Target score: 1500+. Strong in Math, needs improvement in Reading"
+      }
+    },
+    "attendance": [
+      {
+        "date": "2026-06-01",
+        "status": "Present",
+        "notes": ""
+      },
+      {
+        "date": "2026-06-02",
+        "status": "Present",
+        "notes": ""
+      },
+      {
+        "date": "2026-06-03",
+        "status": "Late",
+        "notes": "Arrived 15 minutes late"
+      }
+    ],
+    "progressReports": [
+      {
+        "date": "2026-07-01",
+        "grade": "B+",
+        "comments": "Significant improvement in Reading comprehension. Math scores consistently high.",
+        "areasOfImprovement": [
+          "Time management in Reading section",
+          "Vocabulary expansion"
+        ],
+        "strengths": [
+          "Excellent mathematical reasoning",
+          "Strong test-taking strategies"
+        ]
+      }
+    ],
+    "examRegistration": {
+      "registered": true,
+      "examSession": "August 2026",
+      "candidateNumber": "",
+      "examCenter": "SAT Test Center - Local High School"
+    },
+    "status": "Active",
+    "notes": ""
+  },
+  {
+    "enrollmentId": "ENR-2026-003",
+    "classId": "EXT-IELTS-001",
+    "student": {
+      "studentId": "STU-003",
+      "name": "Li Wei Chen",
+      "email": "liwei.chen@example.com",
+      "phone": "+1-555-0103",
+      "dateOfBirth": "1999-07-08",
+      "currentGrade": "University Applicant"
+    },
+    "enrollmentDate": "2026-06-15T09:00:00Z",
+    "paymentStatus": "Paid",
+    "paymentDetails": {
+      "totalAmount": 1200,
+      "amountPaid": 1200,
+      "paymentMethod": "Online Payment",
+      "invoiceNumber": "INV-2026-003"
+    },
+    "assessmentResults": {
+      "initialAssessment": {
+        "date": "2026-06-10",
+        "score": 6.0,
+        "level": "Intermediate",
+        "notes": "Target band: 7.5. Needs significant improvement in Writing and Speaking"
+      }
+    },
+    "attendance": [
+      {
+        "date": "2026-07-01",
+        "status": "Present",
+        "notes": ""
+      },
+      {
+        "date": "2026-07-02",
+        "status": "Present",
+        "notes": ""
+      },
+      {
+        "date": "2026-07-03",
+        "status": "Present",
+        "notes": ""
+      }
+    ],
+    "progressReports": [],
+    "examRegistration": {
+      "registered": true,
+      "examSession": "August 2026",
+      "candidateNumber": "IELTS-2026-789",
+      "examCenter": "British Council - City Center"
+    },
+    "status": "Active",
+    "notes": "Applying to UK universities for Masters program"
+  }
+]

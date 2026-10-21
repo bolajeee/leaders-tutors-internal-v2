@@ -1,0 +1,4 @@
+LEADERS TUTORS — SAMPLE LESSON NOTE
+
+This placeholder confirms the lesson-material download flow in local mock mode.
+Production API mode should return the secure URL for the real lesson note.

@@ -1,0 +1,154 @@
+{
+  "examTypes": [
+    {
+      "id": "IGCSE",
+      "name": "International General Certificate of Secondary Education",
+      "boards": ["Cambridge", "Edexcel"],
+      "subjects": [
+        "Mathematics",
+        "English Language",
+        "English Literature",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "Computer Science",
+        "Economics",
+        "Business Studies",
+        "Geography",
+        "History",
+        "Art & Design",
+        "Music"
+      ],
+      "examSessions": ["May/June", "October/November"]
+    },
+    {
+      "id": "A-Level",
+      "name": "Advanced Level",
+      "boards": ["Cambridge", "Edexcel"],
+      "subjects": [
+        "Mathematics",
+        "Further Mathematics",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "Computer Science",
+        "Economics",
+        "Business",
+        "Psychology",
+        "English Literature",
+        "History",
+        "Geography"
+      ],
+      "examSessions": ["May/June", "October/November"]
+    },
+    {
+      "id": "IB",
+      "name": "International Baccalaureate",
+      "boards": ["IB Organization"],
+      "programs": ["Diploma Programme", "Middle Years Programme"],
+      "subjects": [
+        "Mathematics (Analysis and Approaches)",
+        "Mathematics (Applications and Interpretation)",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "English A: Language and Literature",
+        "Economics",
+        "Business Management",
+        "Psychology",
+        "History",
+        "Geography"
+      ],
+      "examSessions": ["May", "November"]
+    },
+    {
+      "id": "SAT",
+      "name": "Scholastic Assessment Test",
+      "boards": ["College Board"],
+      "sections": [
+        "Reading",
+        "Writing and Language",
+        "Mathematics (No Calculator)",
+        "Mathematics (Calculator)"
+      ],
+      "examSessions": ["Monthly (August through June)"]
+    },
+    {
+      "id": "ACT",
+      "name": "American College Testing",
+      "boards": ["ACT Inc"],
+      "sections": [
+        "English",
+        "Mathematics",
+        "Reading",
+        "Science",
+        "Writing (Optional)"
+      ],
+      "examSessions": ["Multiple dates throughout the year"]
+    },
+    {
+      "id": "AP",
+      "name": "Advanced Placement",
+      "boards": ["College Board"],
+      "subjects": [
+        "AP Calculus AB",
+        "AP Calculus BC",
+        "AP Physics 1",
+        "AP Physics 2",
+        "AP Physics C",
+        "AP Chemistry",
+        "AP Biology",
+        "AP Computer Science A",
+        "AP Computer Science Principles",
+        "AP English Language",
+        "AP English Literature",
+        "AP US History",
+        "AP World History",
+        "AP Psychology",
+        "AP Economics (Macro & Micro)"
+      ],
+      "examSessions": ["May"]
+    },
+    {
+      "id": "IELTS",
+      "name": "International English Language Testing System",
+      "boards": ["British Council", "IDP", "Cambridge Assessment"],
+      "modules": ["Listening", "Reading", "Writing", "Speaking"],
+      "types": ["Academic", "General Training"],
+      "examSessions": ["Multiple dates throughout the year"]
+    },
+    {
+      "id": "TOEFL",
+      "name": "Test of English as a Foreign Language",
+      "boards": ["ETS"],
+      "sections": ["Reading", "Listening", "Speaking", "Writing"],
+      "examSessions": ["Multiple dates throughout the year"]
+    },
+    {
+      "id": "GRE",
+      "name": "Graduate Record Examination",
+      "boards": ["ETS"],
+      "sections": [
+        "Verbal Reasoning",
+        "Quantitative Reasoning",
+        "Analytical Writing"
+      ],
+      "examSessions": ["Year-round (computer-based)"]
+    },
+    {
+      "id": "GMAT",
+      "name": "Graduate Management Admission Test",
+      "boards": ["GMAC"],
+      "sections": [
+        "Analytical Writing Assessment",
+        "Integrated Reasoning",
+        "Quantitative",
+        "Verbal"
+      ],
+      "examSessions": ["Year-round (computer-based)"]
+    }
+  ],
+  "classLevels": ["Foundation", "Intermediate", "Advanced", "Excellence"],
+  "classTypes": ["Regular", "Intensive", "Crash Course", "One-on-One"],
+  "classStatuses": ["Open", "Full", "In Progress", "Completed", "Cancelled"]
+}

@@ -1,0 +1,225 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "External Exam Class",
+  "description": "Schema for external examination classes in the Leaders Tutors system",
+  "type": "object",
+  "properties": {
+    "classId": {
+      "type": "string",
+      "description": "Unique identifier for the class"
+    },
+    "examType": {
+      "type": "string",
+      "enum": [
+        "IGCSE",
+        "A-Level",
+        "IB",
+        "SAT",
+        "ACT",
+        "AP",
+        "TOEFL",
+        "IELTS",
+        "GRE",
+        "GMAT"
+      ],
+      "description": "Type of external examination"
+    },
+    "examBoard": {
+      "type": "string",
+      "enum": [
+        "Cambridge",
+        "Edexcel",
+        "IB Organization",
+        "College Board",
+        "ACT Inc",
+        "ETS",
+        "British Council"
+      ],
+      "description": "Examining board or organization"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject being taught"
+    },
+    "level": {
+      "type": "string",
+      "enum": ["Foundation", "Intermediate", "Advanced", "Excellence"],
+      "description": "Class difficulty level"
+    },
+    "classType": {
+      "type": "string",
+      "enum": ["Regular", "Intensive", "Crash Course", "One-on-One"],
+      "description": "Type of class delivery"
+    },
+    "schedule": {
+      "type": "object",
+      "properties": {
+        "startDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Class start date"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Class end date"
+        },
+        "dayOfWeek": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday"
+            ]
+          },
+          "description": "Days when class meets"
+        },
+        "timeSlot": {
+          "type": "string",
+          "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]-([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "Time slot in HH:MM-HH:MM format"
+        },
+        "duration": {
+          "type": "integer",
+          "description": "Duration in minutes"
+        }
+      },
+      "required": ["startDate", "endDate", "dayOfWeek", "timeSlot", "duration"]
+    },
+    "tutor": {
+      "type": "object",
+      "properties": {
+        "tutorId": {
+          "type": "string",
+          "description": "Unique tutor identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Tutor's full name"
+        },
+        "qualifications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tutor's qualifications"
+        },
+        "experience": {
+          "type": "integer",
+          "description": "Years of teaching experience"
+        }
+      },
+      "required": ["tutorId", "name"]
+    },
+    "capacity": {
+      "type": "object",
+      "properties": {
+        "maxStudents": {
+          "type": "integer",
+          "description": "Maximum number of students"
+        },
+        "currentEnrollment": {
+          "type": "integer",
+          "description": "Current number of enrolled students"
+        },
+        "waitlist": {
+          "type": "integer",
+          "description": "Number of students on waitlist"
+        }
+      },
+      "required": ["maxStudents", "currentEnrollment"]
+    },
+    "fees": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "type": "string",
+          "description": "Currency code (e.g., USD, GBP, EUR)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Fee amount"
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["per session", "per month", "per term", "per course"],
+          "description": "Frequency of payment"
+        }
+      },
+      "required": ["currency", "amount", "frequency"]
+    },
+    "materials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Material title"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Textbook",
+              "Workbook",
+              "Past Papers",
+              "Online Resource",
+              "Study Guide"
+            ]
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether material is required"
+          }
+        }
+      },
+      "description": "Course materials"
+    },
+    "examDates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "type": "string",
+            "description": "Exam session (e.g., May 2026, November 2026)"
+          },
+          "registrationDeadline": {
+            "type": "string",
+            "format": "date",
+            "description": "Last date for registration"
+          },
+          "examDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Actual exam date"
+          }
+        }
+      },
+      "description": "Upcoming exam dates"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Open", "Full", "In Progress", "Completed", "Cancelled"],
+      "description": "Current status of the class"
+    }
+  },
+  "required": [
+    "classId",
+    "examType",
+    "subject",
+    "level",
+    "classType",
+    "schedule",
+    "tutor",
+    "capacity",
+    "fees",
+    "status"
+  ]
+}

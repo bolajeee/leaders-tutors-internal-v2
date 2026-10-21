@@ -1,0 +1,213 @@
+[
+  {
+    "classId": "EXT-IGCSE-MATH-001",
+    "examType": "IGCSE",
+    "examBoard": "Cambridge",
+    "subject": "Mathematics",
+    "level": "Intermediate",
+    "classType": "Regular",
+    "schedule": {
+      "startDate": "2026-09-01",
+      "endDate": "2027-05-31",
+      "dayOfWeek": ["Tuesday", "Thursday"],
+      "timeSlot": "16:00-18:00",
+      "duration": 120
+    },
+    "tutor": {
+      "tutorId": "TUT-001",
+      "name": "Dr. Sarah Johnson",
+      "qualifications": [
+        "PhD in Mathematics",
+        "Cambridge Certified IGCSE Examiner"
+      ],
+      "experience": 15
+    },
+    "capacity": {
+      "maxStudents": 12,
+      "currentEnrollment": 8,
+      "waitlist": 0
+    },
+    "fees": {
+      "currency": "USD",
+      "amount": 350,
+      "frequency": "per month"
+    },
+    "materials": [
+      {
+        "title": "Cambridge IGCSE Mathematics Core and Extended Coursebook",
+        "type": "Textbook",
+        "required": true
+      },
+      {
+        "title": "Cambridge IGCSE Mathematics Past Papers Collection",
+        "type": "Past Papers",
+        "required": true
+      }
+    ],
+    "examDates": [
+      {
+        "session": "May/June 2027",
+        "registrationDeadline": "2027-02-15",
+        "examDate": "2027-05-20"
+      }
+    ],
+    "status": "Open"
+  },
+  {
+    "classId": "EXT-ALEVEL-PHY-001",
+    "examType": "A-Level",
+    "examBoard": "Cambridge",
+    "subject": "Physics",
+    "level": "Advanced",
+    "classType": "Regular",
+    "schedule": {
+      "startDate": "2026-09-01",
+      "endDate": "2027-06-30",
+      "dayOfWeek": ["Monday", "Wednesday", "Friday"],
+      "timeSlot": "14:00-16:00",
+      "duration": 120
+    },
+    "tutor": {
+      "tutorId": "TUT-002",
+      "name": "Prof. Michael Chen",
+      "qualifications": ["Master's in Physics", "A-Level Physics Examiner"],
+      "experience": 12
+    },
+    "capacity": {
+      "maxStudents": 10,
+      "currentEnrollment": 10,
+      "waitlist": 3
+    },
+    "fees": {
+      "currency": "USD",
+      "amount": 450,
+      "frequency": "per month"
+    },
+    "materials": [
+      {
+        "title": "Cambridge International AS and A Level Physics Coursebook",
+        "type": "Textbook",
+        "required": true
+      },
+      {
+        "title": "Physics Laboratory Manual",
+        "type": "Workbook",
+        "required": true
+      }
+    ],
+    "examDates": [
+      {
+        "session": "May/June 2027",
+        "registrationDeadline": "2027-02-28",
+        "examDate": "2027-06-15"
+      }
+    ],
+    "status": "Full"
+  },
+  {
+    "classId": "EXT-SAT-PREP-001",
+    "examType": "SAT",
+    "examBoard": "College Board",
+    "subject": "SAT Preparation (Math & English)",
+    "level": "Advanced",
+    "classType": "Intensive",
+    "schedule": {
+      "startDate": "2026-06-01",
+      "endDate": "2026-08-31",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday"],
+      "timeSlot": "10:00-13:00",
+      "duration": 180
+    },
+    "tutor": {
+      "tutorId": "TUT-003",
+      "name": "Ms. Emily Rodriguez",
+      "qualifications": ["SAT Perfect Score (1600)", "Master's in Education"],
+      "experience": 8
+    },
+    "capacity": {
+      "maxStudents": 15,
+      "currentEnrollment": 12,
+      "waitlist": 0
+    },
+    "fees": {
+      "currency": "USD",
+      "amount": 2400,
+      "frequency": "per course"
+    },
+    "materials": [
+      {
+        "title": "Official SAT Study Guide",
+        "type": "Study Guide",
+        "required": true
+      },
+      {
+        "title": "SAT Online Practice Platform Access",
+        "type": "Online Resource",
+        "required": true
+      }
+    ],
+    "examDates": [
+      {
+        "session": "August 2026",
+        "registrationDeadline": "2026-07-15",
+        "examDate": "2026-08-27"
+      }
+    ],
+    "status": "Open"
+  },
+  {
+    "classId": "EXT-IELTS-001",
+    "examType": "IELTS",
+    "examBoard": "British Council",
+    "subject": "IELTS Academic Preparation",
+    "level": "Intermediate",
+    "classType": "Crash Course",
+    "schedule": {
+      "startDate": "2026-07-01",
+      "endDate": "2026-07-28",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      "timeSlot": "09:00-13:00",
+      "duration": 240
+    },
+    "tutor": {
+      "tutorId": "TUT-004",
+      "name": "Mr. James Wilson",
+      "qualifications": [
+        "IELTS Band 9",
+        "CELTA Certified",
+        "British Council Certified IELTS Trainer"
+      ],
+      "experience": 10
+    },
+    "capacity": {
+      "maxStudents": 8,
+      "currentEnrollment": 5,
+      "waitlist": 0
+    },
+    "fees": {
+      "currency": "USD",
+      "amount": 1200,
+      "frequency": "per course"
+    },
+    "materials": [
+      {
+        "title": "Cambridge IELTS 16 Official Practice Tests",
+        "type": "Past Papers",
+        "required": true
+      },
+      {
+        "title": "IELTS Writing Task 1 & 2 Guide",
+        "type": "Study Guide",
+        "required": true
+      }
+    ],
+    "examDates": [
+      {
+        "session": "August 2026",
+        "registrationDeadline": "2026-07-15",
+        "examDate": "2026-08-05"
+      }
+    ],
+    "status": "Open"
+  }
+]

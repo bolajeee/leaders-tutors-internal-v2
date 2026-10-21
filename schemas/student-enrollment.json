@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Student Enrollment",
+  "description": "Schema for student enrollment in external examination classes",
+  "type": "object",
+  "properties": {
+    "enrollmentId": {
+      "type": "string",
+      "description": "Unique identifier for the enrollment"
+    },
+    "classId": {
+      "type": "string",
+      "description": "Reference to the class ID"
+    },
+    "student": {
+      "type": "object",
+      "properties": {
+        "studentId": {
+          "type": "string",
+          "description": "Unique student identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Student's full name"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Student's email address"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number"
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "format": "date",
+          "description": "Student's date of birth"
+        },
+        "currentGrade": {
+          "type": "string",
+          "description": "Current grade/year of study"
+        }
+      },
+      "required": ["studentId", "name", "email"]
+    },
+    "enrollmentDate": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date and time of enrollment"
+    },
+    "paymentStatus": {
+      "type": "string",
+      "enum": ["Pending", "Paid", "Partial", "Overdue", "Refunded"],
+      "description": "Payment status"
+    },
+    "paymentDetails": {
+      "type": "object",
+      "properties": {
+        "totalAmount": {
+          "type": "number",
+          "description": "Total fee amount"
+        },
+        "amountPaid": {
+          "type": "number",
+          "description": "Amount paid so far"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": [
+            "Credit Card",
+            "Bank Transfer",
+            "Cash",
+            "Check",
+            "Online Payment"
+          ],
+          "description": "Method of payment"
+        },
+        "invoiceNumber": {
+          "type": "string",
+          "description": "Invoice reference number"
+        }
+      }
+    },
+    "assessmentResults": {
+      "type": "object",
+      "properties": {
+        "initialAssessment": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "format": "date"
+            },
+            "score": {
+              "type": "number"
+            },
+            "level": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "attendance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Present", "Absent", "Late", "Excused"]
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Attendance records"
+    },
+    "progressReports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "grade": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "areasOfImprovement": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "strengths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "description": "Progress reports throughout the course"
+    },
+    "examRegistration": {
+      "type": "object",
+      "properties": {
+        "registered": {
+          "type": "boolean",
+          "description": "Whether student is registered for the exam"
+        },
+        "examSession": {
+          "type": "string",
+          "description": "Exam session (e.g., May 2027)"
+        },
+        "candidateNumber": {
+          "type": "string",
+          "description": "Exam candidate number"
+        },
+        "examCenter": {
+          "type": "string",
+          "description": "Exam center location"
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Active", "Completed", "Withdrawn", "Suspended"],
+      "description": "Enrollment status"
+    },
+    "withdrawalInfo": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "refundAmount": {
+          "type": "number"
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes about the enrollment"
+    }
+  },
+  "required": [
+    "enrollmentId",
+    "classId",
+    "student",
+    "enrollmentDate",
+    "paymentStatus",
+    "status"
+  ]
+}

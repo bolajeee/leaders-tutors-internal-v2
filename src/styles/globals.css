@@ -1,0 +1,430 @@
+@import "tailwindcss";
+@import "./styles.css";
+
+@import "lightgallery/css/lightgallery.css";
+@import "lightgallery/css/lg-zoom.css";
+@import "lightgallery/css/lg-thumbnail.css";
+
+@custom-variant hover (&:hover);
+@custom-variant focus (&:focus);
+
+/* ===== Design tokens exposed as Tailwind utilities (bg-primary, text-secondary, shadow-card …) ===== */
+@theme inline {
+  --color-primary: var(--primary-color);
+  --color-primary-hover: var(--primary-hover-color);
+  --color-primary-light: var(--primary-color-light);
+  --color-secondary: var(--secondary-color);
+  --color-secondary-hover: var(--secondary-hover-color);
+  --color-secondary-light: var(--secondary-color-light);
+  --color-canvas: var(--canvas-color);
+  --color-ink: var(--text-dark);
+  --color-muted: var(--text-secondary-color);
+  --color-hairline: var(--border-color);
+
+  /* Legacy "mtn-*" classes used by form components: map onto the brand indigo */
+  --color-mtn-50: #f3f4fc;
+  --color-mtn-100: var(--primary-color-light);
+  --color-mtn-400: #7e80cc;
+  --color-mtn-500: var(--primary-color);
+  --color-mtn-800: var(--primary-hover-color);
+
+  --radius-card: 1rem;
+  --radius-pill: 999px;
+
+  --shadow-card: var(--shadow-card-value);
+  --shadow-pop: var(--shadow-pop-value);
+  --shadow-glow: var(--shadow-glow-value);
+}
+
+.animate-fade-right {
+  animation: fade-right 0.6s ease-out forwards;
+}
+
+@keyframes scroll-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-scroll-left {
+  animation: scroll-left 20s linear infinite;
+}
+
+/* Custom Font Classes (optional if you don't extend Tailwind theme) */
+
+/* ===== Base Layer ===== */
+@layer base {
+  :root {
+    --body-color: #000;
+    --primary-color: #3e4095; /* base */
+    --primary-hover-color: #2c2f7a; /* darker hover */
+    --primary-color-light: #e0e1f5; /* lighter variant for backgrounds */
+    --secondary-color: #f39a2e;
+    --secondary-hover-color: #d97706; /* darker hover */
+    --secondary-color-light: #fcd34d; /* lighter variant for backgrounds */
+
+    --title-color: #333;
+    --text-color: #7c7c7c;
+    --link-color: #3b82f6;
+    --head-color: #1f2937;
+    --gray-color: #f8f8f8;
+    --text-secondary-color: #6b7280;
+    --text-green: #22c55e;
+    --border-color: #e5e7eb;
+    --text-dark: #101828;
+    --border-color-light: #f8fafc;
+    --warm-gray: #a8a29e;
+
+    /* ///// surfaces, gradients & elevation */
+    --canvas-color: #f7f7fb;
+    --gradient-brand: linear-gradient(
+      135deg,
+      var(--primary-hover-color) 0%,
+      var(--primary-color) 45%,
+      var(--secondary-hover-color) 100%
+    );
+    --gradient-brand-soft: linear-gradient(
+      135deg,
+      #eceefc 0%,
+      #ffffff 50%,
+      #fff4e5 100%
+    );
+    --shadow-card-value:
+      0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 16px rgba(62, 64, 149, 0.06);
+    --shadow-pop-value:
+      0 4px 8px rgba(16, 24, 40, 0.06), 0 16px 40px rgba(62, 64, 149, 0.14);
+    --shadow-glow-value: 0 8px 24px rgba(62, 64, 149, 0.35);
+
+    /* /////status colors */
+    --active-color: #090;
+    --pending-color: #f0ad4e;
+    --failed-color: #f00;
+    --processing-color: #0d6efd;
+    --inactive-color: #6c757d;
+    --completed-color: #198754;
+  }
+
+  body {
+    font-family: "font_regular", sans-serif !important;
+    @apply m-0 p-0 bg-white min-h-screen text-[15px] text-(--text-color);
+  }
+
+  /* ===== Scrollbar Styling ===== */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) #e1e1e0;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: #e1e1e0;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--primary-color);
+    border-radius: 9px;
+    border: 2px solid var(--primary-color);
+  }
+
+  /* Autofill fix */
+  input:-webkit-autofill,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: #030303 !important;
+  }
+}
+
+/* ===== Utilities Layer ===== */
+@layer utilities {
+  /* Animations */
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-up {
+    animation: fade-up 0.6s ease-out forwards;
+  }
+
+  @keyframes fade-down {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-down {
+    animation: fade-down 0.6s ease-out forwards;
+  }
+
+  @keyframes fade-left {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  .animate-fade-left {
+    animation: fade-left 0.6s ease-out forwards;
+  }
+
+  @keyframes fade-right {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  .animate-fade-right {
+    animation: fade-right 0.6s ease-out forwards;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .animate-fade-in,
+  .animate-fadeIn {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+
+  /* Brand gradient helpers */
+  .bg-brand-gradient {
+    background-image: var(--gradient-brand);
+  }
+  .bg-brand-gradient-soft {
+    background-image: var(--gradient-brand-soft);
+  }
+  .text-brand-gradient {
+    background-image: linear-gradient(
+      90deg,
+      var(--primary-color),
+      var(--secondary-hover-color)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Card surface: white, rounded, hairline border, soft layered shadow */
+  .card-surface {
+    background: #fff;
+    border: 1px solid rgba(229, 231, 235, 0.8);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card-value);
+    transition:
+      box-shadow 0.25s ease,
+      transform 0.25s ease;
+  }
+  .card-surface-hover:hover {
+    box-shadow: var(--shadow-pop-value);
+    transform: translateY(-2px);
+  }
+
+  /* Progress bar fill / skeleton shimmer */
+  @keyframes shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+  .skeleton {
+    background: linear-gradient(90deg, #eceef5 25%, #f6f7fb 50%, #eceef5 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(30px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out forwards;
+  }
+
+  /* Custom Font Classes (optional if you don't extend Tailwind theme) */
+  .font-bold-custom {
+    font-family: "font_bold", sans-serif;
+  }
+  .font-medium-custom {
+    font-family: "font_medium", sans-serif;
+  }
+  .font-regular-custom {
+    font-family: "font_regular", sans-serif;
+  }
+}
+
+/* The container */
+.container {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Hide the browser's default checkbox */
+.container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* Create a custom checkbox */
+.container .checkmark {
+  height: 24px;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff;
+  border-radius: 4px;
+  border: #6b7280 1px solid;
+}
+
+/* On mouse-over, add a grey background color */
+.container:hover input ~ .checkmark {
+  background-color: #fff;
+}
+
+/* When the checkbox is checked, add a blue background */
+.container input:checked ~ .checkmark {
+  background-color: var(--primary-color);
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+.container .checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+/* Show the checkmark when checked */
+.container input:checked ~ .checkmark:after {
+  display: block;
+}
+/* Style the checkmark/indicator */
+.container .checkmark:after {
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
+
+/* Container for the radio input and label */
+.radio-container {
+  display: inline-block;
+  position: relative;
+  padding-left: 15px;
+  margin-bottom: 25px;
+  cursor: pointer;
+  font-size: 22px;
+  user-select: none;
+}
+
+/* Hide the default radio button */
+.radio-container input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Custom radio button appearance */
+.radiomark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 25px;
+  width: 25px;
+  background-color: #fff;
+  border: #ccc 1px solid;
+  border-radius: 15px;
+  transition: background-color 0.2s ease;
+}
+
+/* When the radio button is checked */
+.radio-container input:checked + .radiomark {
+  background-color: #f3c921;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Create the inner circle of the radio button when checked */
+.radiomark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.radio-container input:checked + .radiomark:after {
+  display: block;
+}
+
+/* Style the inner circle */
+.radio-container .radiomark:after {
+  top: 9px;
+  left: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+}
+
+/* Signup form helper rules added to globals to ensure consistent input sizing and hide scrollbars visually */
+.signup-form input,
+.signup-form select,
+.signup-form textarea {
+  font-size: 15px; /* match body text */
+  font-weight: 400;
+  font-family:
+    "font_regular",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial;
+}
+
+/* visually hide scrollbars while keeping content scrollable */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
