@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  getChangePasswordCapability,
   getDataSource,
   getRecoveryCapability,
   getRenewalCapability,
@@ -32,14 +33,22 @@ describe("capabilities", () => {
     expect(getResendOtpCapability().available).toBe(true);
   });
 
-  it("need a configured endpoint in api mode and explain why when missing", () => {
+  it("need the live API base URL in api mode and explain why when it is missing", () => {
     vi.stubEnv("NEXT_PUBLIC_CURRICULUM_SOURCE", "api");
-    vi.stubEnv("NEXT_PUBLIC_SUBSCRIPTION_RENEWAL_PATH", "");
-    vi.stubEnv("NEXT_PUBLIC_PASSWORD_RECOVERY_PATH", "  ");
+    vi.stubEnv("NEXT_PUBLIC_BASE_URL", "  ");
     expect(getRenewalCapability()).toMatchObject({ available: false, reason: expect.stringContaining("support") });
     expect(getRecoveryCapability().available).toBe(false);
-    vi.stubEnv("NEXT_PUBLIC_SUBSCRIPTION_RENEWAL_PATH", "/renew");
+    expect(getResendOtpCapability().available).toBe(false);
+    vi.stubEnv("NEXT_PUBLIC_BASE_URL", "https://leaderstutors.com/api/dev");
     expect(getRenewalCapability()).toEqual({ available: true });
+    expect(getRecoveryCapability()).toEqual({ available: true });
+    expect(getResendOtpCapability()).toEqual({ available: true });
+  });
+
+  it("only offers changing the password in the demo, since the live API has no such call", () => {
+    expect(getChangePasswordCapability().available).toBe(true);
+    vi.stubEnv("NEXT_PUBLIC_CURRICULUM_SOURCE", "api");
+    expect(getChangePasswordCapability()).toMatchObject({ available: false, reason: expect.stringMatching(/forgot password/i) });
   });
 });
 

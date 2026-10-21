@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/api-client", () => ({ apiClient: { get: vi.fn() } }));
+vi.mock("@/lib/live-api", () => ({ liveCall: vi.fn() }));
 
-import { apiClient } from "@/lib/api-client";
-import { getCurriculumRepository, normalizeCurriculum } from "./curriculum";
-import { CurriculumUnavailableError } from "@/types/curriculum";
+import { liveCall } from "@/lib/live-api";
+import { ApiError } from "@/lib/errors";
+import { countLessons, getCurriculumRepository } from "./curriculum";
 
 describe("mock curriculum repository", () => {
   it("provides a subject, term, week, and lesson hierarchy", async () => {
@@ -51,120 +51,143 @@ describe("mock curriculum repository", () => {
   });
 });
 
-describe("normalizeCurriculum", () => {
-  const payload = {
-    data: [
+describe("live curriculum repository (api mode)", () => {
+  const subjectsReply = {
+    success: true,
+    message: "",
+    response: 200,
+    subjects: [
       {
-        subjectId: "s1",
-        subject_name: "Physics",
-        description: "Forces and motion",
-        progress: 140,
+        subject_id: "SUB001",
+        subject_name: "MATHEMATICS",
         terms: [
-          {
-            termId: "t2",
-            name: "Second Term",
-            order: 2,
-            weeks: [],
-          },
-          {
-            termId: "t1",
-            name: "First Term",
-            position: 1,
-            weeks: [
-              {
-                weekId: "w1",
-                name: "Week 1",
-                lessons: [
-                  {
-                    tutorialId: "l1",
-                    tutorialTitle: "Motion",
-                    tutorialDescription: "<p>Learn about <b>motion</b>&nbsp;today</p>",
-                    tutorialDuration: 125,
-                    tutorialVideo: "https://cdn.example.com/motion.mp4",
-                    materialUrl: "https://cdn.example.com/motion.pdf",
-                    cbtUrl: "https://cbt.example.com/motion",
-                    questionCount: 10,
-                  },
-                  { tutorialId: "", tutorialTitle: "Dropped: no id" },
-                  { tutorialId: "l3" },
-                ],
-              },
-            ],
-          },
+          { term_id: "TRM001", term_name: "FIRST TERM", total_number_of_videos: 4 },
+          { term_id: "TRM002", term_name: "SECOND TERM", total_number_of_videos: 0 },
         ],
       },
-      { subjectId: "", subject_name: "Dropped" },
+      { subject_id: "SUB002", subject_name: "Yoruba", terms: [] },
+      { subject_id: "", subject_name: "Dropped: no id", terms: [] },
+    ],
+  };
+  const weeksReply = {
+    success: true,
+    message: "",
+    subject_name: "MATHEMATICS",
+    term_name: "FIRST TERM",
+    data: [
+      {
+        week_name: "WEEK 1",
+        week_videos: [
+          {
+            tutorial_id: "TUT001",
+            topic: "Whole numbers",
+            summary: "Read, write and order whole numbers.",
+            documentStoragePath: "https://leaderstutors.com/uploads/thumbs",
+            thumbnail: "whole.png",
+            quiz_status: 1,
+            quiz_question_counts: 10,
+          },
+          { tutorial_id: "", topic: "Dropped: no id" },
+        ],
+      },
+      { week_name: "WEEK 2", week_videos: [] },
+    ],
+  };
+  const tutorialReply = {
+    success: true,
+    message: "",
+    data: [
+      {
+        tutorial_id: "TUT001",
+        topic: "Whole numbers",
+        summary: "Read, write and order whole numbers.",
+        duration: "12:30",
+        subject_name: "MATHEMATICS",
+        term_name: "FIRST TERM",
+        week_name: "WEEK 1",
+        documentStoragePath_video: "https://leaderstutors.com/uploads/videos/",
+        video: "whole.mp4",
+        documentStoragePath_material: "https://leaderstutors.com/uploads/notes",
+        material: "whole.pdf",
+      },
     ],
   };
 
-  it("maps an enveloped API payload to the normalized tree", () => {
-    const [physics, ...rest] = normalizeCurriculum(payload);
-    expect(rest).toHaveLength(0);
-    expect(physics).toMatchObject({ id: "s1", name: "Physics", description: "Forces and motion", progress: 100 });
-    const lesson = physics.terms.find((term) => term.id === "t1")!.weeks[0].lessons[0];
-    expect(lesson).toMatchObject({
-      id: "l1",
-      subjectId: "s1",
-      subjectName: "Physics",
-      termId: "t1",
-      termLabel: "First Term",
-      weekId: "w1",
-      weekLabel: "Week 1",
-      title: "Motion",
-      summary: "Learn about motion today",
-      duration: "2:05",
-      videoUrl: "https://cdn.example.com/motion.mp4",
-    });
-    expect(lesson.materials).toEqual([
-      { id: "l1-note", title: "Lesson note", url: "https://cdn.example.com/motion.pdf", kind: "note" },
-    ]);
-    expect(lesson.assessment).toEqual({
-      label: "Take CBT practice",
-      url: "https://cbt.example.com/motion",
-      questionCount: 10,
-    });
-  });
-
-  it("drops lessons without an id or title and subjects without an id", () => {
-    const [physics] = normalizeCurriculum(payload);
-    expect(physics.terms.flatMap((term) => term.weeks).flatMap((week) => week.lessons)).toHaveLength(1);
-  });
-
-  it("accepts a bare array and fills in defaults", () => {
-    const [subject] = normalizeCurriculum([{ id: "s", name: "Art", terms: [] }]);
-    expect(subject).toEqual({ id: "s", name: "Art", description: "", progress: 0, terms: [] });
-  });
-
-  it("reports unsupported payloads as unavailable instead of guessing", () => {
-    expect(() => normalizeCurriculum({ message: "ok" })).toThrow(CurriculumUnavailableError);
-    expect(() => normalizeCurriculum(null)).toThrow(CurriculumUnavailableError);
-    expect(() => normalizeCurriculum("<html>")).toThrow(CurriculumUnavailableError);
-  });
-});
-
-describe("api curriculum mode", () => {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_CURRICULUM_SOURCE", "api");
-    vi.mocked(apiClient.get).mockReset();
+    vi.mocked(liveCall).mockReset();
   });
 
-  it("reports an unavailable state when no curriculum endpoint is configured", async () => {
-    vi.stubEnv("NEXT_PUBLIC_CURRICULUM_API_PATH", "");
-    await expect(getCurriculumRepository().getSubjects()).rejects.toBeInstanceOf(CurriculumUnavailableError);
-    expect(apiClient.get).not.toHaveBeenCalled();
-  });
-
-  it("never falls back to fixtures when the request fails", async () => {
-    vi.stubEnv("NEXT_PUBLIC_CURRICULUM_API_PATH", "/user/tutorials/fetch-curriculum");
-    vi.mocked(apiClient.get).mockRejectedValue(new Error("Network Error"));
-    await expect(getCurriculumRepository().getSubjects()).rejects.toThrow("Network Error");
-  });
-
-  it("loads and normalizes the configured endpoint", async () => {
-    vi.stubEnv("NEXT_PUBLIC_CURRICULUM_API_PATH", "/user/tutorials/fetch-curriculum");
-    vi.mocked(apiClient.get).mockResolvedValue([{ id: "api-1", name: "Chemistry", terms: [] }]);
+  it("lists the student's subjects with their terms and topic counts, weeks not loaded yet", async () => {
+    vi.mocked(liveCall).mockResolvedValue(subjectsReply);
     const subjects = await getCurriculumRepository().getSubjects();
-    expect(apiClient.get).toHaveBeenCalledWith("/user/tutorials/fetch-curriculum");
-    expect(subjects.map((subject) => subject.id)).toEqual(["api-1"]);
+
+    expect(liveCall).toHaveBeenCalledWith("/user/tutorials/fetch-deparment-class-subjects");
+    expect(subjects.map((subject) => subject.name)).toEqual(["Mathematics", "Yoruba"]);
+    expect(subjects[0].terms).toEqual([
+      { id: "TRM001", label: "First Term", order: 1, weeks: [], lessonCount: 4 },
+      { id: "TRM002", label: "Second Term", order: 2, weeks: [], lessonCount: 0 },
+    ]);
+    expect(countLessons(subjects[0])).toBe(4);
+    expect(subjects[0].progress).toBeUndefined();
+  });
+
+  it("gives a subject its bundled cover, and none when there is no cover for it", async () => {
+    vi.mocked(liveCall).mockResolvedValue(subjectsReply);
+    const [maths, yoruba] = await getCurriculumRepository().getSubjects();
+    expect(maths.imageUrl).toBe("/course-covers/mathematics.svg");
+    expect(yoruba.imageUrl).toBeUndefined();
+  });
+
+  it("loads a term's weeks and lessons only when asked", async () => {
+    vi.mocked(liveCall).mockResolvedValue(weeksReply);
+    const weeks = await getCurriculumRepository().getWeeks("SUB001", "TRM001");
+
+    expect(liveCall).toHaveBeenCalledWith("/user/tutorials/fetch-deparment-class-subject-weeks", {
+      term_id: "TRM001",
+      subject_id: "SUB001",
+    });
+    expect(weeks.map((week) => week.label)).toEqual(["Week 1", "Week 2"]);
+    expect(weeks[0].lessons).toHaveLength(1);
+    expect(weeks[0].lessons[0]).toMatchObject({
+      id: "TUT001",
+      title: "Whole numbers",
+      subjectName: "Mathematics",
+      termLabel: "First Term",
+      weekLabel: "Week 1",
+      thumbnailUrl: "https://leaderstutors.com/uploads/thumbs/whole.png",
+    });
+    // CBT practice has no in-app equivalent yet, so no dead practice link is offered.
+    expect(weeks[0].lessons[0].assessment).toBeUndefined();
+    expect(weeks[1].lessons).toEqual([]);
+  });
+
+  it("opens a lesson with its video and note", async () => {
+    vi.mocked(liveCall).mockResolvedValue(tutorialReply);
+    const lesson = await getCurriculumRepository().getLesson("TUT001");
+
+    expect(liveCall).toHaveBeenCalledWith("/user/tutorials/fetch-tutorial", { tutorial_id: "TUT001" });
+    expect(lesson).toMatchObject({
+      id: "TUT001",
+      title: "Whole numbers",
+      subjectName: "Mathematics",
+      termLabel: "First Term",
+      weekLabel: "Week 1",
+      duration: "12:30",
+      videoUrl: "https://leaderstutors.com/uploads/videos/whole.mp4",
+    });
+    expect(lesson?.materials).toEqual([
+      { id: "TUT001-note", title: "Whole numbers lesson note", url: "https://leaderstutors.com/uploads/notes/whole.pdf", kind: "note" },
+    ]);
+  });
+
+  it("returns null for a tutorial the API has no row for", async () => {
+    vi.mocked(liveCall).mockResolvedValue({ success: true, message: "", data: [] });
+    await expect(getCurriculumRepository().getLesson("NOPE")).resolves.toBeNull();
+  });
+
+  it("never falls back to fixtures: the API's refusal is what the student sees", async () => {
+    vi.mocked(liveCall).mockRejectedValue(new ApiError("Your subscription has expired. Renew to continue.", 400));
+    await expect(getCurriculumRepository().getSubjects()).rejects.toThrow("Your subscription has expired");
   });
 });

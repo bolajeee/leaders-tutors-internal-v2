@@ -1,13 +1,18 @@
-import { apiClient } from "@/lib/api-client";
 import { AuthResponse } from "@/types/auth/auth";
+import type { AccountSnapshot } from "@/types/portal";
 import {
-  getEndpoints,
   getRecoveryCapability,
   getResendOtpCapability,
   isMockMode,
   SUBSCRIPTION_PRICE,
 } from "@/lib/config";
 import { ApiError, FeatureUnavailableError } from "@/lib/errors";
+import { liveCall } from "@/lib/live-api";
+import {
+  getNameParts,
+  isLiveSession,
+  parseLiveSession,
+} from "@/services/live-account";
 import {
   labelFor,
   MOCK_OTP,
@@ -38,6 +43,8 @@ export interface SignupPayload {
   password: string;
   confirmPassword: string;
   paymentMethodId?: string;
+  /** An agent's code typed at sign-up, or the id from a ?ref= link. */
+  referral?: { type: "code" | "link"; id: string };
 }
 
 export interface VerifySignupOtpPayload {
@@ -61,58 +68,67 @@ export interface PendingSignupVerification {
     amount?: string | number;
     email?: string;
     paystackPaymentKey?: string;
+    /** Live sign-up only: the new account's key, used to confirm or cancel payment. */
+    accessKey?: string;
+    subscriptionId?: string;
+    referralType?: string;
+    referralId?: string;
   };
 }
 
 type AuthApiResponse = Record<string, unknown>;
 
 interface Department {
-  departmentId: number;
-  departmentName: string;
+  department_id: string;
+  department_name: string;
 }
 
-interface Exam {
-  examId: string | number;
-  examAbbreviation: string;
+interface SchoolClass {
+  class_id: string;
+  class_name: string;
 }
 
-const toList = <T>(data: T[] | { data?: T[] } | undefined): T[] =>
-  Array.isArray(data) ? data : data?.data || [];
+interface PaymentMethod {
+  payment_method_id: string;
+  payment_method_name: string;
+}
+
+/** Sign-up can only be paid online; wallet and system methods need an existing account. */
+const SIGNUP_PAYMENT_METHODS = ["DO"];
 
 export const fetchDepartments = async (): Promise<DropdownOption[]> => {
   if (isMockMode()) return mockDepartments;
-  const data = await apiClient.get<Department[]>(
-    "/preset-data/fetch-departments",
-  );
-  return toList(data).map((item) => ({
-    value: String(item.departmentId),
-    label: item.departmentName,
+  const { data } = await liveCall<{ data: Department[] }>("/site/departments/fetch-department", {
+    department_id: "",
+  });
+  return (data ?? []).map((item) => ({
+    value: item.department_id,
+    label: item.department_name,
   }));
 };
 
-export const fetchExams = async (): Promise<DropdownOption[]> => {
+/** A student's class. The live API lists classes per department, so one is required there. */
+export const fetchExams = async (departmentId?: string): Promise<DropdownOption[]> => {
   if (isMockMode()) return mockExams;
-  const data = await apiClient.get<Exam[]>("/preset-data/fetch-external-exams");
-  return toList(data).map((item) => ({
-    value: String(item.examId),
-    label: item.examAbbreviation,
+  if (!departmentId) return [];
+  const { data } = await liveCall<{ data: SchoolClass[] }>("/site/department-class-subject/fetch-class-by-department", {
+    department_id: departmentId,
+  });
+  return (data ?? []).map((item) => ({
+    value: item.class_id,
+    label: item.class_name,
   }));
 };
-
-interface PaymentMethod {
-  paymentMethodId: string;
-  paymentMethodName: string;
-}
 
 export const fetchPaymentMethods = async (): Promise<DropdownOption[]> => {
   if (isMockMode()) return mockPaymentMethods;
-  const data = await apiClient.get<PaymentMethod[]>(
-    "/preset-data/fetch-payment-methods?paymentMethodIds=CC,BT",
-  );
-  return toList(data).map((item) => ({
-    value: item.paymentMethodId,
-    label: item.paymentMethodName,
-  }));
+  const { data } = await liveCall<{ data: PaymentMethod[] }>("/setups/payment-method", { payment_id: "" });
+  return (data ?? [])
+    .filter((item) => SIGNUP_PAYMENT_METHODS.includes(item.payment_method_id))
+    .map((item) => ({
+      value: item.payment_method_id,
+      label: item.payment_method_name,
+    }));
 };
 
 const getStringValue = (
@@ -135,15 +151,6 @@ const getStringValue = (
   return fallback;
 };
 
-const getNameParts = (fullName: string) => {
-  const [firstName = "User", ...rest] = fullName.trim().split(/\s+/);
-
-  return {
-    firstName,
-    lastName: rest.join(" ") || "Account",
-  };
-};
-
 export const mapSignupPayload = (
   formData: {
     fullName: string;
@@ -153,9 +160,11 @@ export const mapSignupPayload = (
     exam: string;
     password: string;
     confirmPassword: string;
+    referralCode?: string;
   },
-  extras: { paymentMethodId: string },
+  extras: { paymentMethodId: string; referralLinkId?: string },
 ): SignupPayload => {
+  const referralId = (extras.referralLinkId || formData.referralCode || "").trim();
   return {
     fullName: formData.fullName.trim(),
     emailAddress: formData.emailAddress.trim(),
@@ -165,6 +174,9 @@ export const mapSignupPayload = (
     password: formData.password,
     confirmPassword: formData.confirmPassword,
     paymentMethodId: extras.paymentMethodId,
+    referral: referralId
+      ? { type: extras.referralLinkId ? "link" : "code", id: referralId }
+      : undefined,
   };
 };
 
@@ -225,17 +237,6 @@ const mockLogin = (payload: LoginPayload): AuthApiResponse => {
 /* -------------------------------------------------------------------------- */
 
 export const signupUser = async (payload: SignupPayload) => {
-  const body = {
-    fullName: payload.fullName,
-    emailAddress: payload.emailAddress,
-    phoneNumber: payload.phoneNumber,
-    departmentId: payload.departmentId,
-    examId: payload.examId,
-    password: payload.password,
-    confirmPassword: payload.confirmPassword,
-    paymentMethodId: payload.paymentMethodId,
-  };
-
   if (isMockMode()) {
     if (payload.emailAddress.trim().toLowerCase() === MOCK_TAKEN_EMAIL) {
       throw new ApiError("An account with this email address already exists.", 409);
@@ -252,15 +253,22 @@ export const signupUser = async (payload: SignupPayload) => {
     };
   }
 
-  return apiClient.post<AuthApiResponse, typeof body>(
-    "/user/auth/signup",
-    body,
-  );
+  return liveCall("/user/auth/signup", {
+    fullname: payload.fullName,
+    email: payload.emailAddress,
+    mobile_no: payload.phoneNumber,
+    department_id: payload.departmentId,
+    class_id: payload.examId,
+    create_password: payload.password,
+    confirm_password: payload.confirmPassword,
+    referral_type: payload.referral?.type ?? "code",
+    referral_id: payload.referral?.id ?? "",
+  });
 };
 
 export const loginUser = async (payload: LoginPayload) => {
   if (isMockMode()) return mockLogin(payload);
-  return apiClient.post<AuthApiResponse, LoginPayload>("/user/auth/login", payload);
+  return liveCall("/user/auth/login", { username: payload.emailAddress, password: payload.password });
 };
 
 /**
@@ -274,7 +282,12 @@ export const verifySignupOtp = async (payload: VerifySignupOtpPayload) => {
     }
     return { success: true };
   }
-  return apiClient.post<AuthApiResponse, VerifySignupOtpPayload>("/user/auth/create-new-password", payload);
+  return liveCall("/user/auth/create-new-password", {
+    user_id: payload.userId,
+    otp: payload.otp,
+    password: payload.password,
+    confirm_password: payload.confirmPassword,
+  });
 };
 
 export const requestPasswordRecovery = async (emailAddress: string): Promise<{ userId: string }> => {
@@ -282,11 +295,8 @@ export const requestPasswordRecovery = async (emailAddress: string): Promise<{ u
   if (!capability.available) throw new FeatureUnavailableError(capability.reason ?? "Password recovery is unavailable.");
   if (isMockMode()) return { userId: `demo-${emailAddress.trim().toLowerCase()}` };
 
-  const response = await apiClient.post<AuthApiResponse, { emailAddress: string }>(
-    getEndpoints().recoveryRequest as string,
-    { emailAddress },
-  );
-  const userId = getStringValue(response ?? {}, ["userId", "id"]);
+  const response = await liveCall("/user/auth/reset-password", { email: emailAddress });
+  const userId = getStringValue(response, ["user_id", "userId", "id"]);
   if (!userId) throw new Error("We couldn't start password recovery. Please try again.");
   return { userId };
 };
@@ -295,13 +305,36 @@ export const resendSignupOtp = async (userId: string): Promise<void> => {
   const capability = getResendOtpCapability();
   if (!capability.available) throw new FeatureUnavailableError(capability.reason ?? "Resending codes is unavailable.");
   if (isMockMode()) return;
-  await apiClient.post(getEndpoints().resendOtp as string, { userId });
+  await liveCall("/user/auth/resend-otp", { user_id: userId });
 };
 
 export const getSignupVerificationData = (
   response: AuthApiResponse,
   signupPayload: SignupPayload,
 ): PendingSignupVerification => {
+  // A live sign-up reply carries the new account and its payment at the top level.
+  if (response.user_id && response.transaction_id) {
+    return {
+      userId: getStringValue(response, ["user_id"]),
+      emailAddress: getStringValue(response, ["email"], signupPayload.emailAddress),
+      signupPayload,
+      paymentProceedData: {
+        fullName: signupPayload.fullName,
+        emailAddress: signupPayload.emailAddress,
+        phoneNumber: signupPayload.phoneNumber,
+        transactionId: getStringValue(response, ["transaction_id"]),
+        amount: getStringValue(response, ["amount"]),
+        email: getStringValue(response, ["email"], signupPayload.emailAddress),
+        currency: "NGN",
+        paystackPaymentKey: getStringValue(response, ["paystack_payment_key"]),
+        accessKey: getStringValue(response, ["access_key"]),
+        subscriptionId: getStringValue(response, ["subscription_id"]),
+        referralType: getStringValue(response, ["referral_type"], signupPayload.referral?.type ?? "code"),
+        referralId: getStringValue(response, ["referral_id"], signupPayload.referral?.id ?? ""),
+      },
+    };
+  }
+
   const responseData = response as Record<string, unknown>;
   const dataObj = responseData?.data as Record<string, unknown> | undefined;
   const userObj = responseData?.user as Record<string, unknown> | undefined;
@@ -387,7 +420,9 @@ const optionalText = (value: unknown) =>
 export const normalizeAuthResponse = (
   response: AuthApiResponse,
   fallbackEmail: string,
-): { token: string; user: AuthResponse } => {
+): { token: string; user: AuthResponse; account?: AccountSnapshot } => {
+  if (isLiveSession(response)) return parseLiveSession(response, fallbackEmail);
+
   // Data may be nested in a `data` property depending on the API variant.
   const source = (response?.data as AuthApiResponse | undefined) || response;
 
@@ -477,7 +512,31 @@ export const completeSignupSuccess = async (
       paymentKey,
     };
   }
-  return apiClient.post<AuthApiResponse>(
-    `/user/auth/signup-success?transactionId=${encodeURIComponent(transactionId)}&paymentKey=${encodeURIComponent(paymentKey)}`,
+  const pending = readPendingSignupVerification();
+  const payment = pending?.paymentProceedData;
+  if (!pending || !payment?.accessKey) {
+    throw new ApiError("Your signup session has expired. Please start again.", 400);
+  }
+  return liveCall(
+    "/user/auth/signup-complete",
+    {
+      user_id: pending.userId,
+      email: pending.emailAddress,
+      transaction_id: transactionId,
+      subscription_id: payment.subscriptionId,
+      amount: payment.amount,
+      paystack_payment_key: paymentKey,
+      referral_type: payment.referralType,
+      referral_id: payment.referralId,
+    },
+    { token: payment.accessKey },
   );
+};
+
+/** Tells the API the student left checkout without paying, so the pending sign-up is released. */
+export const cancelSignupPayment = async (): Promise<void> => {
+  if (isMockMode()) return;
+  const accessKey = readPendingSignupVerification()?.paymentProceedData?.accessKey;
+  if (!accessKey) return;
+  await liveCall("/user/auth/signup-cancelled", {}, { token: accessKey });
 };

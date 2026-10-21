@@ -175,9 +175,9 @@ describe("password recovery", () => {
     expect(await screen.findByText(/enter the email address you registered with/i)).toBeInTheDocument();
   });
 
-  it("is honest that recovery is unavailable until the API supports it", async () => {
+  it("is honest that recovery is unavailable until the API is configured", async () => {
     vi.stubEnv("NEXT_PUBLIC_CURRICULUM_SOURCE", "api");
-    vi.stubEnv("NEXT_PUBLIC_PASSWORD_RECOVERY_PATH", "");
+    vi.stubEnv("NEXT_PUBLIC_BASE_URL", "");
     const user = userEvent.setup();
     renderWithQuery(<Login />);
     await user.click(await screen.findByRole("button", { name: /reset password here/i }));

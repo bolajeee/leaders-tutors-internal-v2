@@ -53,9 +53,9 @@ export const Auth: React.FC<AuthFormStepsProps> = (props) => {
         emailAddress: credentials.email,
         password: credentials.password,
       });
-      const { token, user } = normalizeAuthResponse(response, credentials.email);
+      const { token, user, account } = normalizeAuthResponse(response, credentials.email);
 
-      useAuthStore.getState().setAuth(user, token);
+      useAuthStore.getState().setAuth(user, token, account);
 
       // Persist enrollment so the portal knows the student's class immediately.
       if (user.departmentId && user.examId) {

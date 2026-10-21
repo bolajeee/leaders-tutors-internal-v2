@@ -1,26 +1,14 @@
-import { apiClient } from "@/lib/api-client";
 import { isMockMode } from "@/lib/config";
 import {
+  AccountSnapshot,
   DashboardSummary,
   PaymentStatus,
   UserEnrollment,
   UserSubscription,
 } from "@/types/portal";
 import { useAuthStore } from "@/store/authStore";
+import { parseLiveDate } from "@/services/live-account";
 import { daysUntil, useDemoStore } from "@/services/mock/demoStore";
-
-type RecordLike = Record<string, unknown>;
-
-interface ApiErrorLike {
-  status?: number;
-  response?: { status?: number };
-}
-
-const getErrorStatus = (error: unknown): number | undefined => {
-  if (typeof error !== "object" || error === null) return undefined;
-  const apiError = error as ApiErrorLike;
-  return apiError.status ?? apiError.response?.status;
-};
 
 export const inactiveSubscription = (): UserSubscription => ({
   isSubscriptionActive: false,
@@ -36,76 +24,33 @@ export const inactiveSubscription = (): UserSubscription => ({
   statusName: "INACTIVE",
 });
 
-const asRecord = (value: unknown): RecordLike => {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return value as RecordLike;
-  }
-  return {};
-};
-
-const asString = (value: unknown, fallback = ""): string => {
-  if (typeof value === "string" && value.trim()) return value.trim();
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  return fallback;
-};
-
-const asNumber = (value: unknown, fallback = 0): number => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return fallback;
-};
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Maps the subscription-status response (the API client has already removed
- * the outer envelope) into the portal's subscription shape.
+ * The live API has no "fetch my subscription" call. Login, payment and profile
+ * replies report the plan and wallet, so the app keeps the latest of those and
+ * works out the days left from the plan's end date.
  */
-export const mapSubscription = (raw: unknown): UserSubscription => {
-  const data = asRecord(raw);
-
-  // statusData is nested: { statusId, statusName }
-  const statusData = asRecord(data.statusData);
-  const statusName = asString(statusData.statusName).toUpperCase();
-  const statusId = asString(data.statusId ?? statusData.statusId);
-  const isActive =
-    statusId === "1" || statusName === "ACTIVE" || statusName === "ACTIVE!";
-
-  // daysLeft is pre-calculated by the backend.
-  const daysLeft = asNumber(data.daysLeft, 0);
-  const expiresAt = asString(
-    data.subscriptionEndDate ?? data.expiresAt ?? data.expiryDate ?? "",
-  );
-
-  // departmentId / examId are not part of the subscription response; they live
-  // in the enrollment persisted at login/signup.
-  const storedEnrollment = useAuthStore.getState().userEnrollment;
+export const subscriptionFromAccount = (account: AccountSnapshot | null): UserSubscription => {
+  const plan = account?.subscription;
+  const endsAt = parseLiveDate(plan?.endDate);
+  const daysLeft = endsAt ? Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / DAY_MS)) : 0;
+  const isActive = daysLeft > 0;
 
   return {
-    isSubscriptionActive: isActive && daysLeft > 0,
-    subscriptionExpiresAt: expiresAt || new Date().toISOString(),
-    subscriptionType: "basic",
-    walletBalance: asNumber(data.walletBalance ?? data.balance, 0),
-    currency: asString(data.currency, "₦"),
-    departmentId: asString(
-      data.departmentId,
-      storedEnrollment?.departmentId ?? "",
-    ),
-    departmentName: asString(
-      data.departmentName ?? data.department,
-      storedEnrollment?.departmentName ?? "",
-    ),
-    examId: asString(data.examId, storedEnrollment?.examId ?? ""),
-    examAbbreviation: asString(
-      data.examAbbreviation ?? data.examAbbr,
-      storedEnrollment?.examAbbreviation ?? "",
-    ),
-    lastPaymentDate:
-      asString(data.subscriptionStartDate ?? data.createdAt) || undefined,
-    subscriptionId: asString(data.subscriptionId) || undefined,
+    isSubscriptionActive: isActive,
+    subscriptionExpiresAt: endsAt?.toISOString() ?? new Date().toISOString(),
+    subscriptionType: "Student plan",
+    walletBalance: account?.walletBalance ?? 0,
+    currency: "₦",
+    departmentId: plan?.departmentId ?? "",
+    departmentName: plan?.departmentName ?? "",
+    examId: plan?.classId ?? "",
+    examAbbreviation: plan?.className ?? "",
+    lastPaymentDate: plan?.startDate || undefined,
+    subscriptionId: plan?.subscriptionId,
     daysLeft,
-    statusName,
+    statusName: isActive ? "ACTIVE" : "EXPIRED",
   };
 };
 
@@ -159,25 +104,15 @@ export const fetchUserSubscription = async (): Promise<UserSubscription> => {
 
   if (isMockMode()) return mockSubscription();
 
-  try {
-    const data = await apiClient.get<unknown>(
-      "/user/accounts/fetch-user-subscription",
-    );
-    const subscription = mapSubscription(data);
-    const enrollment = enrollmentFromSubscription(subscription);
-    if (enrollment) {
-      useAuthStore.getState().setUserEnrollment(enrollment);
-    }
-    return subscription;
-  } catch (error: unknown) {
-    // A student with no subscription record is simply not subscribed. A 401 is
-    // handled globally as an expired session; everything else surfaces to the UI.
-    const status = getErrorStatus(error);
-    if (status === 403 || status === 404) {
-      return inactiveSubscription();
-    }
-    throw error;
+  const { account } = useAuthStore.getState();
+  if (!account) return inactiveSubscription();
+
+  const subscription = subscriptionFromAccount(account);
+  const enrollment = enrollmentFromSubscription(subscription);
+  if (enrollment) {
+    useAuthStore.getState().setUserEnrollment(enrollment);
   }
+  return subscription;
 };
 
 export const checkPaymentStatus = async (): Promise<PaymentStatus> => {

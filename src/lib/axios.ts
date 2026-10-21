@@ -144,7 +144,9 @@ const setupInterceptors = (instance: AxiosInstance) => {
         });
       }
 
-      if (token && config.headers) {
+      // A caller-supplied key wins: sign-up payment is confirmed with the new
+      // account's key before anyone is signed in.
+      if (token && config.headers && !config.headers.Authorization) {
         config.headers.Authorization = `Bearer ${token}`;
       }
 

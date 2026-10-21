@@ -7,10 +7,13 @@ import ModalShell from "@/components/ui/ModalShell";
 import SubjectImage from "@/components/ui/SubjectImage";
 import { countLessons } from "@/services/curriculum";
 import { canOpenLesson, type AccessStatus } from "@/services/access";
+import { useTermWeeks } from "@/hooks/usePortalData";
+import { ErrorState } from "@/components/ui/State";
 import type { AcademicTerm, CurriculumSubject, Lesson } from "@/types/curriculum";
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-const termLessons = (term: AcademicTerm) => term.weeks.reduce((sum, week) => sum + week.lessons.length, 0);
+const termLessons = (term: AcademicTerm) =>
+  term.lessonCount ?? term.weeks.reduce((sum, week) => sum + week.lessons.length, 0);
 
 function LessonRow({ lesson, access, onUnlock }: { lesson: Lesson; access: AccessStatus; onUnlock: () => void }) {
   const button =
@@ -24,11 +27,13 @@ function LessonRow({ lesson, access, onUnlock }: { lesson: Lesson; access: Acces
         <h5 className="text-sm font-semibold text-slate-900">{lesson.title}</h5>
         <p className="mt-1 line-clamp-2 text-xs text-slate-600">{lesson.summary}</p>
       </div>
-      <span className="inline-flex items-center gap-1 text-xs text-slate-600">
-        <Clock3 className="h-3.5 w-3.5" aria-hidden />
-        <span className="sr-only">Duration </span>
-        {lesson.duration}
-      </span>
+      {lesson.duration && (
+        <span className="inline-flex items-center gap-1 text-xs text-slate-600">
+          <Clock3 className="h-3.5 w-3.5" aria-hidden />
+          <span className="sr-only">Duration </span>
+          {lesson.duration}
+        </span>
+      )}
       {canOpenLesson(access) ? (
         <Link href={`/tutorials/${lesson.id}`} className={`${button} bg-[var(--primary-color)] text-white`}>
           <PlayCircle className="h-4 w-4" aria-hidden />
@@ -52,12 +57,14 @@ function LessonRow({ lesson, access, onUnlock }: { lesson: Lesson; access: Acces
 
 /** One term: its header previews what is inside; the dropdown lists the topics, week by week. */
 function TermCard({
+  subjectId,
   term,
   open,
   onToggle,
   access,
   onUnlock,
 }: {
+  subjectId: string;
   term: AcademicTerm;
   open: boolean;
   onToggle: () => void;
@@ -65,6 +72,8 @@ function TermCard({
   onUnlock: () => void;
 }) {
   const panelId = useId();
+  const loadedWeeks = useTermWeeks(subjectId, term, open);
+  const weeks = term.weeks.length ? term.weeks : (loadedWeeks.data ?? []);
   const lessons = termLessons(term);
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -81,7 +90,9 @@ function TermCard({
             <span className="mt-0.5 block text-xs text-slate-600">
               {lessons === 0
                 ? "Topics coming soon"
-                : `${plural(term.weeks.length, "week")} · ${plural(lessons, "topic")}`}
+                : weeks.length
+                  ? `${plural(weeks.length, "week")} · ${plural(lessons, "topic")}`
+                  : plural(lessons, "topic")}
             </span>
           </span>
           <span className="hidden text-xs font-semibold text-[var(--primary-color)] sm:block">
@@ -93,8 +104,20 @@ function TermCard({
       <div id={panelId} hidden={!open}>
         {open && (
           <div className="space-y-5 border-t border-slate-100 bg-slate-50 p-4">
-            {term.weeks.length ? (
-              term.weeks.map((week) => (
+            {loadedWeeks.isPending && loadedWeeks.fetchStatus === "fetching" ? (
+              <div role="status" className="space-y-2">
+                <div className="skeleton h-16 rounded-xl" />
+                <div className="skeleton h-16 rounded-xl" />
+                <span className="sr-only">Loading topics</span>
+              </div>
+            ) : loadedWeeks.isError ? (
+              <ErrorState
+                title="Topics couldn't be loaded"
+                message={loadedWeeks.error instanceof Error ? loadedWeeks.error.message : "Please try again."}
+                onRetry={() => void loadedWeeks.refetch()}
+              />
+            ) : weeks.length ? (
+              weeks.map((week) => (
                 <section key={week.id} aria-label={week.label}>
                   <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-600">{week.label}</h4>
                   {week.lessons.length ? (
@@ -155,6 +178,7 @@ export default function CourseModal({
             subject.terms.map((term) => (
               <TermCard
                 key={term.id}
+                subjectId={subject.id}
                 term={term}
                 open={activeTermId === term.id}
                 onToggle={() => setTermId(activeTermId === term.id ? null : term.id)}

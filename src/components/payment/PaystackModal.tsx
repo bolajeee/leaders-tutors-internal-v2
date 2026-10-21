@@ -22,6 +22,8 @@ interface PaystackModalProps {
   email: string;
   amount: number;
   publicKey?: string;
+  /** The API's id for this payment; Paystack must charge against it so the API can confirm it. */
+  reference?: string;
   metadata?: Record<string, unknown>;
   onSuccess: (reference: string) => void;
   title?: string;
@@ -38,6 +40,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
   email,
   amount,
   publicKey: publicKeyProp,
+  reference,
   metadata,
   onSuccess,
   title = "Complete Payment",
@@ -61,6 +64,7 @@ export const PaystackModal: React.FC<PaystackModalProps> = ({
     initiatePayment({
       email,
       amount: convertToKobo(amount),
+      reference,
       label: title,
       metadata: {
         ...metadata,

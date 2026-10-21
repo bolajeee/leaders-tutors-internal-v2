@@ -4,6 +4,7 @@ import { fetchUserSubscription } from "@/services/portal";
 import { fetchUserTransactions } from "@/services/payment";
 import { getCurriculumRepository } from "@/services/curriculum";
 import { resolveAccess } from "@/services/access";
+import type { AcademicTerm } from "@/types/curriculum";
 
 const useIdentity = () => useAuthStore((state) => state.user?.email ?? state.token ?? "anonymous");
 
@@ -41,6 +42,21 @@ export const useCurriculum = () => {
   return useQuery({
     queryKey: ["curriculum", identity],
     queryFn: () => getCurriculumRepository().getSubjects(),
+    retry: false,
+  });
+};
+
+/**
+ * A term's weeks. The live curriculum lists terms first and loads their weeks
+ * only when one is opened; terms that already carry their weeks need no request.
+ */
+export const useTermWeeks = (subjectId: string, term: AcademicTerm, enabled: boolean) => {
+  const identity = useIdentity();
+  const needsWeeks = term.weeks.length === 0 && (term.lessonCount ?? 0) > 0;
+  return useQuery({
+    queryKey: ["weeks", identity, subjectId, term.id],
+    queryFn: () => getCurriculumRepository().getWeeks(subjectId, term.id),
+    enabled: enabled && needsWeeks,
     retry: false,
   });
 };

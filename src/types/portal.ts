@@ -41,3 +41,23 @@ export interface UserEnrollment {
   examAbbreviation: string;
   status?: string;
 }
+
+/**
+ * What the live API last reported about the student's wallet and plan. It has
+ * no "fetch my subscription" call; login, payment and profile replies carry
+ * this instead, so the app keeps the latest one.
+ */
+export interface AccountSnapshot {
+  walletBalance: number;
+  statusName: string;
+  subscription?: {
+    subscriptionId?: string;
+    departmentId: string;
+    departmentName: string;
+    classId: string;
+    className: string;
+    /** As the API sends them, e.g. "2025-01-31 10:20:30". */
+    startDate: string;
+    endDate: string;
+  };
+}

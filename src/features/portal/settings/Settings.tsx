@@ -18,6 +18,7 @@ import {
 import { PortalWrapper } from "../PortalWrapper";
 import { useAuthStore } from "@/store/authStore";
 import { changePassword } from "@/services/settings";
+import { getChangePasswordCapability } from "@/lib/config";
 
 const inputClass =
   "mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[var(--primary-color)] focus:ring-2 focus:ring-[var(--primary-color-light)] disabled:bg-slate-50 disabled:text-slate-400";
@@ -32,6 +33,7 @@ export default function Settings() {
   const [confirmation, setConfirmation] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const passwordCapability = getChangePasswordCapability();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -211,6 +213,15 @@ export default function Settings() {
                 className="p-6"
                 aria-busy={isSaving}
               >
+                {!passwordCapability.available && (
+                  <p
+                    role="status"
+                    className="mb-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950"
+                  >
+                    <AlertCircle className="mt-1 h-4 w-4 shrink-0" />
+                    {passwordCapability.reason}
+                  </p>
+                )}
                 {error && (
                   <p
                     id="password-error"
@@ -231,7 +242,7 @@ export default function Settings() {
                   </p>
                 )}
                 <fieldset
-                  disabled={isSaving}
+                  disabled={isSaving || !passwordCapability.available}
                   aria-describedby={error ? "password-error" : undefined}
                   className="space-y-5"
                 >
@@ -319,7 +330,7 @@ export default function Settings() {
                   <div className="border-t border-slate-100 pt-5">
                     <button
                       type="submit"
-                      disabled={isSaving}
+                      disabled={isSaving || !passwordCapability.available}
                       className={buttonClass}
                     >
                       {isSaving ? "Updating password…" : "Update password"}

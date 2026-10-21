@@ -15,6 +15,8 @@ interface SignupInstructionModalProps {
   paymentMethodId: string;
   paymentMethodOptions: { value: string; label: string }[];
   paymentMethodError?: string;
+  /** False when checkout opens straight after sign-up, with no email code in between. */
+  verifiesEmail?: boolean;
   onPaymentMethodChange: (value: string) => void;
   onPayNow: () => void;
 }
@@ -29,6 +31,7 @@ export default function SignupInstructionModal({
   paymentMethodId,
   paymentMethodOptions,
   paymentMethodError,
+  verifiesEmail = true,
   onPaymentMethodChange,
   onPayNow,
 }: SignupInstructionModalProps) {
@@ -42,7 +45,9 @@ export default function SignupInstructionModal({
     >
       <div className="space-y-4 p-6">
         <p className="text-sm leading-6 text-slate-700">
-          Confirm your class and payment method. We will verify your email before opening secure checkout.
+          {verifiesEmail
+            ? "Confirm your class and payment method. We will verify your email before opening secure checkout."
+            : "Confirm your class and payment method. Next you will pay securely with Paystack to activate your account."}
         </p>
 
         <dl className="space-y-3 rounded-lg border border-[var(--border-color)] bg-[var(--gray-color)] p-4">
@@ -104,7 +109,7 @@ export default function SignupInstructionModal({
 
         <Button
           type="button"
-          text="Continue to verification"
+          text={verifiesEmail ? "Continue to verification" : "Proceed to payment"}
           fullWidth
           isLoading={isPaying}
           onClick={onPayNow}

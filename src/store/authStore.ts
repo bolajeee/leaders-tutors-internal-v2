@@ -1,6 +1,6 @@
 // store/authStore.ts
 import { AuthResponse } from "@/types/auth/auth";
-import { UserEnrollment } from "@/types/portal";
+import { AccountSnapshot, UserEnrollment } from "@/types/portal";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { queryClient } from "@/lib/query-client";
@@ -24,8 +24,11 @@ interface AuthState {
   user: AuthResponse | null;
   token: string | null;
   userEnrollment: UserEnrollment | null;
-  setAuth: (user: AuthResponse, token: string) => void;
+  /** Latest wallet and plan details from the live API; null in mock mode. */
+  account: AccountSnapshot | null;
+  setAuth: (user: AuthResponse, token: string, account?: AccountSnapshot | null) => void;
   setUserEnrollment: (enrollment: UserEnrollment) => void;
+  setAccount: (account: AccountSnapshot) => void;
   clearAuth: () => void;
 }
 
@@ -35,15 +38,17 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       userEnrollment: null,
-      setAuth: (user, token) => {
+      account: null,
+      setAuth: (user, token, account = null) => {
         syncSessionCookie(true);
-        set({ user, token });
+        set({ user, token, account });
       },
       setUserEnrollment: (enrollment) => set({ userEnrollment: enrollment }),
+      setAccount: (account) => set({ account }),
       clearAuth: () => {
         syncSessionCookie(false);
         queryClient.clear();
-        set({ user: null, token: null, userEnrollment: null });
+        set({ user: null, token: null, userEnrollment: null, account: null });
       },
     }),
     {

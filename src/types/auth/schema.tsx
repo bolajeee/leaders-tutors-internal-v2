@@ -41,6 +41,7 @@ export const SignupSchema = z
       ),
     department: z.string().min(1, "Select a department"),
     exam: z.string().min(1, "Select your class"),
+    referralCode: z.string().trim().optional(),
     password: z.string().min(6, "Password must be at least 6 characters long"),
     confirmPassword: z
       .string()

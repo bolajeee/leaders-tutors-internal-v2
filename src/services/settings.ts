@@ -1,6 +1,5 @@
-import { apiClient } from "@/lib/api-client";
-import { isMockMode } from "@/lib/config";
-import { ApiError } from "@/lib/errors";
+import { getChangePasswordCapability, isMockMode } from "@/lib/config";
+import { ApiError, FeatureUnavailableError } from "@/lib/errors";
 import { MOCK_WRONG_PASSWORD } from "@/services/mock/directory";
 
 export interface ChangePasswordPayload {
@@ -17,12 +16,8 @@ export const changePassword = async (payload: ChangePasswordPayload) => {
     }
     return { success: true, message: "Password updated." };
   }
-  const response = await apiClient.post<
-    { success?: boolean; message?: string },
-    ChangePasswordPayload
-  >("/user/settings/change-password", payload);
-  if (response?.success === false) {
-    throw new Error(response.message || "Your password could not be updated.");
-  }
-  return response;
+  // The live API has no signed-in change-password call; recovery by emailed code is the route.
+  throw new FeatureUnavailableError(
+    getChangePasswordCapability().reason ?? "Changing your password is unavailable.",
+  );
 };

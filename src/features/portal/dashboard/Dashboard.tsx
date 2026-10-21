@@ -194,10 +194,12 @@ export default function Dashboard() {
                             </span>
                           </span>
                         </span>
-                        <span className="sm:w-48">
-                          <span className="sr-only">{subject.progress}% complete</span>
-                          <ProgressBar value={subject.progress} showLabel />
-                        </span>
+                        {subject.progress !== undefined && (
+                          <span className="sm:w-48">
+                            <span className="sr-only">{subject.progress}% complete</span>
+                            <ProgressBar value={subject.progress} showLabel />
+                          </span>
+                        )}
                       </Link>
                     </li>
                   );

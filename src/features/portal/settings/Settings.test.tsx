@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Settings from "./Settings";
@@ -77,5 +77,20 @@ describe("settings", () => {
     await user.click(await screen.findByRole("button", { name: /^sign out$/i }));
     expect(useAuthStore.getState().token).toBeNull();
     expect(nav.replace).toHaveBeenCalledWith("/login");
+  });
+});
+
+describe("settings against the live API", () => {
+  beforeEach(() => {
+    resetAppState();
+    signInAs("active");
+    vi.stubEnv("NEXT_PUBLIC_CURRICULUM_SOURCE", "api");
+  });
+
+  it("explains that the password cannot be changed here and points to recovery, instead of failing on submit", async () => {
+    renderWithQuery(<Settings />);
+    expect(await screen.findByRole("status")).toHaveTextContent(/forgot password/i);
+    expect(screen.getByLabelText("Current password")).toBeDisabled();
+    expect(screen.getByRole("button", { name: /update password/i })).toBeDisabled();
   });
 });

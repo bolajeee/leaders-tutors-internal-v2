@@ -90,6 +90,7 @@ export default function WalletLoadModal({
         publicKey,
         email,
         amount: convertToKobo(numAmount),
+        reference: transactionId || undefined,
         label: "Load wallet",
         metadata: { transactionId, purpose: "load_wallet" },
         onSuccess: (reference) => {

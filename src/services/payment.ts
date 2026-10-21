@@ -1,5 +1,7 @@
-import { apiClient } from "@/lib/api-client";
 import { isMockMode } from "@/lib/config";
+import { ApiError } from "@/lib/errors";
+import { liveCall } from "@/lib/live-api";
+import { parseLiveAccount } from "@/services/live-account";
 import { useAuthStore } from "@/store/authStore";
 import { useDemoStore } from "@/services/mock/demoStore";
 import type {
@@ -18,28 +20,14 @@ export interface PaymentInitiation {
   currency: string;
 }
 
-interface PaymentApiResponse {
-  transactionId?: string;
-  id?: string;
-  paymentUrl?: string;
-  authorization_url?: string;
-  paystackPaymentKey?: string;
-  amount?: number | string;
-  currency?: string;
-  paymentProceedData?: PaymentApiResponse;
-}
-
+/** One row of the live `transaction-history` reply. */
 export interface RawWalletTransaction {
-  transactionId?: string;
-  id?: string;
+  transaction_id?: string;
   amount?: string | number;
-  currency?: string;
-  statusId?: number | string;
-  transactionType?: string;
-  type?: string;
-  createdAt?: string;
-  created_at?: string;
-  description?: string;
+  transaction_type_name?: string;
+  payment_method_name?: string;
+  status_name?: string;
+  created_time?: string;
 }
 
 const demo = () => {
@@ -66,30 +54,21 @@ export const initiateWalletLoad = async (
     });
     return { transactionId, paymentUrl: "", paystackPaymentKey: "pk_test_local_demo", amount, currency: "₦" };
   }
-  try {
-    const response = await apiClient.post<PaymentApiResponse>(
-      "/user/payment/load-wallet-log",
-      {
-        amount: amount.toString(),
-      },
-    );
-    // Same envelope as signup: details may sit under paymentProceedData.
-    const data = { ...response, ...response?.paymentProceedData };
-    const transactionId = data.transactionId || data.id || "";
-    if (!transactionId) {
-      throw new Error("No transaction id returned");
-    }
+  const reply = await liveCall<{
+    transaction_id?: string | number;
+    amount?: string | number;
+    paystack_payment_key?: string;
+  }>("/user/transactions/load-wallet-pending", { amount });
+  const transactionId = reply.transaction_id ? String(reply.transaction_id) : "";
+  if (!transactionId) throw new Error("We couldn't start the wallet payment. Please try again.");
 
-    return {
-      transactionId,
-      paymentUrl: data.paymentUrl || data.authorization_url || "",
-      paystackPaymentKey: data.paystackPaymentKey || "",
-      amount: Number(data.amount) || amount,
-      currency: data.currency || "₦",
-    };
-  } catch {
-    throw new Error("Failed to initiate wallet loading");
-  }
+  return {
+    transactionId,
+    paymentUrl: "",
+    paystackPaymentKey: reply.paystack_payment_key ? String(reply.paystack_payment_key) : "",
+    amount: Number(reply.amount) || amount,
+    currency: "₦",
+  };
 };
 
 // Confirm wallet load success
@@ -107,9 +86,10 @@ export const confirmWalletLoadSuccess = async (
     return true;
   }
   try {
-    await apiClient.post(
-      `/user/payment/load-wallet-success?id=${encodeURIComponent(transactionId)}`,
-    );
+    const reply = await liveCall("/user/transactions/load-wallet-success", { transaction_id: transactionId });
+    // The reply reports the credited balance; keep it so the wallet updates at once.
+    const account = parseLiveAccount(reply);
+    if (account) useAuthStore.getState().setAccount(account);
     return true;
   } catch {
     return false;
@@ -125,26 +105,29 @@ export const cancelWalletLoad = async (
     return true;
   }
   try {
-    await apiClient.post(
-      `/user/payment/load-wallet-cancel?id=${encodeURIComponent(transactionId)}`,
-    );
+    await liveCall("/user/transactions/load-wallet-cancelled", { transaction_id: transactionId });
     return true;
   } catch {
     return false;
   }
 };
 
-export const mapRawTransaction = (transaction: RawWalletTransaction): WalletTransaction => ({
-  id: transaction.transactionId || transaction.id || "",
-  amount: parseFloat(String(transaction.amount ?? "0")) || 0,
-  currency: transaction.currency || "₦",
-  status: mapTransactionStatus(transaction.statusId ?? ""),
-  type: mapTransactionType(transaction.transactionType || transaction.type || ""),
-  createdAt: transaction.createdAt || transaction.created_at || "",
-  description:
-    transaction.description ||
-    `${transaction.transactionType || transaction.type || "Transaction"} - ${transaction.amount}`,
-});
+const titleCase = (value: string) =>
+  value.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+
+export const mapRawTransaction = (transaction: RawWalletTransaction): WalletTransaction => {
+  const purpose = titleCase(transaction.transaction_type_name || "Transaction");
+  const method = transaction.payment_method_name ? titleCase(transaction.payment_method_name) : "";
+  return {
+    id: transaction.transaction_id || "",
+    amount: parseFloat(String(transaction.amount ?? "0").replace(/,/g, "")) || 0,
+    currency: "₦",
+    status: mapTransactionStatus(transaction.status_name ?? ""),
+    type: mapTransactionType(transaction.transaction_type_name || ""),
+    createdAt: transaction.created_time || "",
+    description: method ? `${purpose} · ${method}` : purpose,
+  };
+};
 
 /**
  * Fetch user transactions. Failures are thrown so screens can show a retry
@@ -153,24 +136,25 @@ export const mapRawTransaction = (transaction: RawWalletTransaction): WalletTran
 export const fetchUserTransactions = async (): Promise<WalletTransaction[]> => {
   if (isMockMode()) return demo().transactions;
 
-  const data = await apiClient.get<RawWalletTransaction[]>(
-    "/user/payment/fetch-transactions",
-  );
-  return Array.isArray(data) ? data.map(mapRawTransaction) : [];
+  try {
+    const { data } = await liveCall<{ data: RawWalletTransaction[] }>("/user/transactions/transaction-history");
+    return Array.isArray(data) ? data.map(mapRawTransaction) : [];
+  } catch (error) {
+    // The API reports "no transactions yet" as an unsuccessful reply, not an empty list.
+    if (error instanceof ApiError && error.status === 400 && /\b(no|not found|empty|yet)\b/i.test(error.message)) {
+      return [];
+    }
+    throw error;
+  }
 };
 
-// Helper function to map status IDs to readable status
-export function mapTransactionStatus(statusId: number | string): TransactionStatus {
-  switch (statusId?.toString()) {
-    case "3":
-      return "pending";
-    case "4":
-      return "success";
-    case "5":
-      return "cancelled";
-    default:
-      return "failed";
-  }
+// Helper function to map the API's status names to a readable status
+export function mapTransactionStatus(statusName: number | string): TransactionStatus {
+  const status = String(statusName ?? "").toLowerCase();
+  if (/success|complete|approved|paid/.test(status)) return "success";
+  if (/pend|process|initiat/.test(status)) return "pending";
+  if (/cancel/.test(status)) return "cancelled";
+  return "failed";
 }
 
 // Helper function to map transaction types
@@ -178,6 +162,6 @@ export function mapTransactionType(type: string): TransactionType {
   if (type?.toLowerCase().includes("wallet")) return "load_wallet";
   if (type?.toLowerCase().includes("exam")) return "exam_payment";
   if (type?.toLowerCase().includes("ebook")) return "ebook_payment";
-  if (type?.toLowerCase().includes("subscription")) return "subscription";
+  if (/subscription|renew/i.test(type ?? "")) return "subscription";
   return "load_wallet";
 }

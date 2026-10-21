@@ -112,11 +112,13 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
                 <Badge tone="brand">{lesson.subjectName}</Badge>
                 <Badge tone="neutral">{lesson.termLabel}</Badge>
                 <Badge tone="neutral">{lesson.weekLabel}</Badge>
-                <Badge tone="warning">
-                  <Clock3 className="h-3 w-3" aria-hidden />
-                  <span className="sr-only">Duration </span>
-                  {lesson.duration}
-                </Badge>
+                {lesson.duration && (
+                  <Badge tone="warning">
+                    <Clock3 className="h-3 w-3" aria-hidden />
+                    <span className="sr-only">Duration </span>
+                    {lesson.duration}
+                  </Badge>
+                )}
               </div>
             </header>
 

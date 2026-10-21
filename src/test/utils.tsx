@@ -13,7 +13,7 @@ export const renderWithQuery = (ui: ReactElement) => {
 };
 
 export const resetAppState = () => {
-  useAuthStore.setState({ user: null, token: null, userEnrollment: null });
+  useAuthStore.setState({ user: null, token: null, userEnrollment: null, account: null });
   useDemoStore.getState().reset();
   appQueryClient.clear();
   resetNavigation();

@@ -51,7 +51,10 @@ export interface AcademicTerm {
   id: string;
   label: string;
   order: number;
+  /** Empty until loaded when `lessonCount` says the term has content. */
   weeks: CurriculumWeek[];
+  /** Topics in the term, when the source reports them before its weeks are loaded. */
+  lessonCount?: number;
 }
 
 export interface CurriculumSubject {
@@ -60,8 +63,8 @@ export interface CurriculumSubject {
   description: string;
   /** Course image uploaded for the subject; absent until one is uploaded. */
   imageUrl?: string;
-  /** Percentage of the subject's lessons completed (0–100). */
-  progress: number;
+  /** Percentage of the subject's lessons completed (0–100); absent when the source does not track it. */
+  progress?: number;
   terms: AcademicTerm[];
 }
 

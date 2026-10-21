@@ -13,12 +13,14 @@ import {
   clearPendingSignupVerification,
   fetchPaymentMethods,
   completeSignupSuccess,
+  cancelSignupPayment,
   normalizeAuthResponse,
   type PendingSignupVerification,
 } from "@/services/auth";
+import { isLiveSession } from "@/services/live-account";
 import { PaystackModal } from "@/components/payment/PaystackModal";
 import { useAuthStore } from "@/store/authStore";
-import { SUBSCRIPTION_PRICE } from "@/lib/config";
+import { isMockMode, SUBSCRIPTION_PRICE } from "@/lib/config";
 import { getErrorMessage } from "@/lib/errors";
 
 /** Where the payment step stands; everything except "idle" explains itself on screen. */
@@ -69,6 +71,8 @@ export function CompleteRegistration() {
   }, [router]);
 
   useEffect(() => {
+    // Only the demo asks which method to use; live sign-up is always paid online.
+    if (!isMockMode()) return;
     const fetchData = async () => {
       try {
         setPaymentMethods(await fetchPaymentMethods());
@@ -84,8 +88,11 @@ export function CompleteRegistration() {
     fetchData();
   }, []);
 
+  // Live sign-up is always paid online, and the referral was entered with the sign-up form.
+  const choosesMethod = isMockMode();
+
   const handleProceed = () => {
-    if (!selectedPaymentMethod) {
+    if (choosesMethod && !selectedPaymentMethod) {
       setMethodError("Please select a payment method to proceed.");
       return;
     }
@@ -122,13 +129,13 @@ export function CompleteRegistration() {
 
       clearPendingSignupVerification();
 
-      if (accessKey) {
+      if (accessKey || isLiveSession(response)) {
         // Payment confirmed and a session was issued: sign the student in.
-        const { token, user } = normalizeAuthResponse(
+        const { token, user, account } = normalizeAuthResponse(
           response,
           pendingData.emailAddress,
         );
-        setAuth(user, token);
+        setAuth(user, token, account);
 
         const deptId =
           pendingData.signupPayload?.departmentId || user.departmentId || "";
@@ -174,6 +181,8 @@ export function CompleteRegistration() {
   const handlePaymentCancelled = () => {
     setShowPaymentModal(false);
     setPayment({ kind: "cancelled" });
+    // Best effort: tell the API so it can release the pending sign-up.
+    void cancelSignupPayment().catch(() => undefined);
   };
 
   const handlePaymentPending = (reference: string) => {
@@ -265,30 +274,34 @@ export function CompleteRegistration() {
           </div>
         )}
 
-        <div className="w-full">
-          <FormSelect
-            id="paymentMethod"
-            name="paymentMethod"
-            label="Payment Method"
-            placeholder="Select Payment Method"
-            control={control}
-            options={paymentMethods}
-            disabled={busy}
-            message={methodError}
-          />
-        </div>
+        {choosesMethod && (
+          <>
+            <div className="w-full">
+              <FormSelect
+                id="paymentMethod"
+                name="paymentMethod"
+                label="Payment Method"
+                placeholder="Select Payment Method"
+                control={control}
+                options={paymentMethods}
+                disabled={busy}
+                message={methodError}
+              />
+            </div>
 
-        <div className="w-full">
-          <TextInput
-            id="referralCode"
-            type="text"
-            label="Referral Code (Optional)"
-            placeholder="Enter your referral code"
-            value={referralCode}
-            onChange={(e) => setReferralCode(e.target.value)}
-            disabled={busy}
-          />
-        </div>
+            <div className="w-full">
+              <TextInput
+                id="referralCode"
+                type="text"
+                label="Referral Code (Optional)"
+                placeholder="Enter your referral code"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+                disabled={busy}
+              />
+            </div>
+          </>
+        )}
 
         <div className="w-full bg-[#FFF4F4] border border-[#FFB4B4] rounded-lg p-4 flex items-start gap-3">
           <p className="text-sm text-gray-700">
@@ -340,6 +353,7 @@ export function CompleteRegistration() {
         email={pendingData.emailAddress}
         amount={paymentAmount}
         publicKey={pendingData.paymentProceedData?.paystackPaymentKey}
+        reference={pendingData.paymentProceedData?.transactionId}
         metadata={{
           userId: pendingData.userId,
           fullName: pendingData.signupPayload?.fullName,

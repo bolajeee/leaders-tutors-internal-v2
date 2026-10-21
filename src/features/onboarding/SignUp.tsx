@@ -1,7 +1,7 @@
 "use client";
 
 import { UserAuthWrapper } from "@/features/auth/UserAuthWrapper";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button, FormSelect, PasswordInput, TextInput } from "@/components/form";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
@@ -11,6 +11,7 @@ import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
 import { handleAppError } from "@/lib/axios";
+import { isMockMode } from "@/lib/config";
 import { showToast } from "@/components/toast";
 import {
   mapSignupPayload,
@@ -27,6 +28,8 @@ const DEFAULT_SIGNUP_AMOUNT = 1000;
 
 export default function SignUp() {
   const router = useRouter();
+  // A ?ref= link credits the referrer; it replaces typing a code.
+  const referralLinkId = useSearchParams().get("ref")?.trim() ?? "";
   const [isPaying, setIsPaying] = useState(false);
   const [showInstructionModal, setShowInstructionModal] = useState(false);
   const [paymentMethodId, setPaymentMethodId] = useState("");
@@ -35,7 +38,12 @@ export default function SignUp() {
   const [departments, setDepartments] = useState<
     { value: string; label: string }[]
   >([]);
-  const [exams, setExams] = useState<{ value: string; label: string }[]>([]);
+  const [allExams, setAllExams] = useState<{ value: string; label: string }[]>([]);
+  // Live classes belong to one department; remember which so a stale list is never shown.
+  const [departmentClasses, setDepartmentClasses] = useState<{
+    departmentId: string;
+    options: { value: string; label: string }[];
+  }>({ departmentId: "", options: [] });
   const [paymentMethods, setPaymentMethods] = useState<
     { value: string; label: string }[]
   >([]);
@@ -45,6 +53,7 @@ export default function SignUp() {
     handleSubmit,
     control,
     getValues,
+    setValue,
     formState: { errors },
   } = useForm<SignupSchemaType>({
     defaultValues: {
@@ -53,6 +62,7 @@ export default function SignUp() {
       phoneNumber: "",
       department: "",
       exam: "",
+      referralCode: "",
       password: "",
       confirmPassword: "",
     },
@@ -70,8 +80,10 @@ export default function SignUp() {
         ]);
 
         setDepartments(deptOptions);
-        setExams(examOptions);
+        setAllExams(examOptions);
         setPaymentMethods(paymentOptions);
+        // Sign-up is always paid online, so there is nothing to choose between.
+        if (!isMockMode() && paymentOptions.length === 1) setPaymentMethodId(paymentOptions[0].value);
       } catch {
         showToast({
           variant: "error",
@@ -86,6 +98,29 @@ export default function SignUp() {
 
   const selectedDepartmentId = useWatch({ control, name: "department" });
   const selectedExamId = useWatch({ control, name: "exam" });
+
+  // The live API lists classes per department, so a new department means a new list.
+  useEffect(() => {
+    if (isMockMode()) return;
+    let current = true;
+    setValue("exam", "");
+    if (!selectedDepartmentId) return;
+    fetchExams(selectedDepartmentId)
+      .then((options) => {
+        if (current) setDepartmentClasses({ departmentId: selectedDepartmentId, options });
+      })
+      .catch(() => {
+        showToast({ variant: "error", title: "Error", message: "Failed to load classes" });
+      });
+    return () => {
+      current = false;
+    };
+  }, [selectedDepartmentId, setValue]);
+  const exams = isMockMode()
+    ? allExams
+    : departmentClasses.departmentId === selectedDepartmentId
+      ? departmentClasses.options
+      : [];
   const selectedDepartment =
     departments.find((item) => item.value === selectedDepartmentId)?.label ||
     "";
@@ -107,19 +142,29 @@ export default function SignUp() {
     try {
       setIsPaying(true);
       const formData = getValues();
-      const payload = mapSignupPayload(formData, { paymentMethodId });
+      const payload = mapSignupPayload(formData, { paymentMethodId, referralLinkId });
       const response = await signupUser(payload);
       const verificationData = getSignupVerificationData(response, payload);
 
       savePendingSignupVerification(verificationData);
 
       setShowInstructionModal(false);
-      showToast({
-        variant: "success",
-        title: "Check your email",
-        message: "Enter the verification code to continue to payment.",
-      });
-      router.push("/sign-up/verify-account");
+      if (isMockMode()) {
+        showToast({
+          variant: "success",
+          title: "Check your email",
+          message: "Enter the verification code to continue to payment.",
+        });
+        router.push("/sign-up/verify-account");
+      } else {
+        // The live sign-up has no emailed code; payment is the next step.
+        showToast({
+          variant: "success",
+          title: "Almost there",
+          message: "Complete your payment to activate your account.",
+        });
+        router.push("/sign-up/complete-registration");
+      }
       return;
     } catch (error) {
       handleAppError({ showToast: true, error });
@@ -209,6 +254,17 @@ export default function SignUp() {
           disabled={isPaying}
         />
 
+        {!referralLinkId && (
+          <TextInput
+            id="referralCode"
+            autoComplete="off"
+            label="Referral Code (Optional)"
+            message={errors.referralCode?.message}
+            disabled={isPaying}
+            {...register("referralCode")}
+          />
+        )}
+
         <div className="w-full relative">
           <PasswordInput
             id="password"
@@ -262,6 +318,7 @@ export default function SignUp() {
         paymentMethodId={paymentMethodId}
         paymentMethodOptions={paymentMethods}
         paymentMethodError={paymentMethodError}
+        verifiesEmail={isMockMode()}
         onPaymentMethodChange={(value) => {
           setPaymentMethodId(value);
           setPaymentMethodError("");
