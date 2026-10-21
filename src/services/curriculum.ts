@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import { curriculumFixtures } from "@/data/curriculum";
+import { coverForSubject } from "@/data/subject-covers";
 import { getEndpoints, isMockMode } from "@/lib/config";
 import {
   CurriculumUnavailableError,
@@ -182,7 +183,7 @@ export const normalizeCurriculum = (payload: unknown): CurriculumSubject[] => {
         description: text(subject, ["description", "summary"]),
         imageUrl:
           text(subject, ["imageUrl", "image", "subjectImage", "subject_image", "coverImage", "picture", "thumbnail"]) ||
-          undefined,
+          coverForSubject(name),
         progress: Number.isFinite(progress) ? Math.min(100, Math.max(0, Math.round(progress))) : 0,
         terms,
       },

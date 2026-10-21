@@ -242,7 +242,7 @@ export const curriculumFixtures: CurriculumSubject[] = [
   }),
   buildSubject({
     id: "english",
-    name: "English Studies",
+    name: "English Language",
     description:
       "Strengthen reading, writing, grammar, listening, and confident communication.",
     imageUrl: "/course-covers/english.svg",
