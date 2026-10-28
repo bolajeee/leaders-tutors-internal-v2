@@ -31,6 +31,7 @@ const week: CurriculumWeek = {
       weekLabel: "Week 1",
       title: "Whole numbers",
       summary: "Read, write and order whole numbers.",
+      thumbnailUrl: "https://leaderstutors.com/uploads/thumbs/whole.png",
       duration: "",
       materials: [],
     },
@@ -40,8 +41,8 @@ const week: CurriculumWeek = {
 const repository = (getWeeks: CurriculumRepository["getWeeks"]) =>
   vi.spyOn(curriculum, "getCurriculumRepository").mockReturnValue({ getWeeks } as unknown as CurriculumRepository);
 
-const renderModal = () =>
-  renderWithQuery(<CourseModal subject={subject} access="active" onClose={vi.fn()} onUnlock={vi.fn()} />);
+const renderModal = (course = subject) =>
+  renderWithQuery(<CourseModal subject={course} access="active" onClose={vi.fn()} onUnlock={vi.fn()} />);
 
 describe("course modal with terms whose weeks load on demand", () => {
   beforeEach(resetAppState);
@@ -73,6 +74,22 @@ describe("course modal with terms whose weeks load on demand", () => {
     expect(getWeeks).toHaveBeenCalledWith("SUB001", "TRM001");
     expect(within(dialog).getByText("1 week · 2 topics")).toBeInTheDocument();
     expect(within(dialog).queryByText(/duration/i)).not.toBeInTheDocument();
+    const lessonRow = link.closest("li");
+    expect(lessonRow).not.toBeNull();
+    expect(within(lessonRow as HTMLLIElement).getByRole("presentation", { hidden: true })).toHaveAttribute(
+      "src",
+      "https://leaderstutors.com/uploads/thumbs/whole.png",
+    );
+  });
+
+  it("renders a course's HTML description as sanitized formatted content", async () => {
+    repository(vi.fn().mockResolvedValue([week]));
+    renderModal({ ...subject, description: "<p>Study <strong>numbers</strong>.</p><script>alert('x')</script>" });
+
+    const dialog = await screen.findByRole("dialog", { name: /mathematics/i });
+    expect(within(dialog).getByText("numbers")).toHaveProperty("tagName", "STRONG");
+    expect(dialog.querySelector("script")).toBeNull();
+    expect(dialog).not.toHaveTextContent("<p>");
   });
 
   it("shows the API's message when a term cannot be loaded, and retries on request", async () => {

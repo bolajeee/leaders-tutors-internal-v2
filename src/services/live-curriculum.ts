@@ -17,6 +17,19 @@ const rows = (value: unknown): Raw[] => (Array.isArray(value) ? value.filter(isR
 const titleCase = (value: string) =>
   value === value.toUpperCase() ? value.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase()) : value;
 
+/** List previews are plain text even when the CMS stores the description as HTML. */
+const plainText = (value: string) =>
+  value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+
 /** Files are stored as a folder URL plus a file name; a complete URL is left alone. */
 const fileUrl = (folder: string, file: string) => {
   if (!file) return undefined;
@@ -48,8 +61,12 @@ const mapSubject = (subject: Raw): CurriculumSubject[] => {
     {
       id,
       name,
-      description: "",
-      imageUrl: text(subject, ["thumbnail_url", "image", "picture"]) || coverForSubject(name),
+      description: text(subject, ["description", "subject_description", "summary"]),
+      imageUrl:
+        fileUrl(
+          text(subject, ["documentStoragePath", "document_storage_path", "image_path"]),
+          text(subject, ["thumbnail", "subject_image"]),
+        ) || text(subject, ["thumbnail_url", "image", "picture"]) || coverForSubject(name),
       terms,
     },
   ];
@@ -76,6 +93,7 @@ const mapWeeks = (data: Raw[], context: WeekContext): CurriculumWeek[] =>
       lessons: rows(week.week_videos).flatMap((video): Lesson[] => {
         const id = text(video, ["tutorial_id"]);
         const title = text(video, ["topic"]);
+        const description = text(video, ["description", "tutorial_description", "summary"]);
         if (!id || !title) return [];
         return [
           {
@@ -87,7 +105,8 @@ const mapWeeks = (data: Raw[], context: WeekContext): CurriculumWeek[] =>
             termLabel: context.termLabel,
             weekLabel: label,
             title,
-            summary: text(video, ["summary"]),
+            summary: plainText(text(video, ["summary", "description"])),
+            description: description || undefined,
             // The week list does not carry the length; the lesson page does.
             duration: "",
             thumbnailUrl: fileUrl(text(video, ["documentStoragePath"]), text(video, ["thumbnail"])),
@@ -139,6 +158,7 @@ export class LiveCurriculumRepository implements CurriculumRepository {
 
     const title = text(tutorial, ["topic"]);
     const note = fileUrl(text(tutorial, ["documentStoragePath_material"]), text(tutorial, ["material"]));
+    const description = text(tutorial, ["description", "tutorial_description", "summary"]);
 
     return {
       id: text(tutorial, ["tutorial_id"], lessonId),
@@ -149,7 +169,8 @@ export class LiveCurriculumRepository implements CurriculumRepository {
       termLabel: titleCase(text(tutorial, ["term_name"])),
       weekLabel: titleCase(text(tutorial, ["week_name"])),
       title,
-      summary: text(tutorial, ["summary"]),
+      summary: plainText(text(tutorial, ["summary", "description"])),
+      description: description || undefined,
       duration: text(tutorial, ["duration"]),
       videoUrl: fileUrl(text(tutorial, ["documentStoragePath_video"]), text(tutorial, ["video"])),
       thumbnailUrl: fileUrl(text(tutorial, ["documentStoragePath"]), text(tutorial, ["thumbnail"])),

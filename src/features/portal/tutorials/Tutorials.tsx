@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import DOMPurify from "dompurify";
 import { ArrowRight, BookOpen, Search } from "lucide-react";
 import { PortalWrapper } from "../PortalWrapper";
 import SubscriptionModal from "@/components/subscription/SubscriptionModal";
@@ -121,7 +122,9 @@ export default function Tutorials() {
                         <span className="block text-sm font-semibold text-slate-900">{subject.name}</span>
                         {subject.description && (
                           <span className="mt-1 line-clamp-2 block text-xs font-normal leading-5 text-slate-600">
-                            {subject.description}
+                            {DOMPurify.isSupported
+                              ? DOMPurify.sanitize(subject.description, { ALLOWED_TAGS: [] })
+                              : subject.description.replace(/<[^>]*>/g, " ")}
                           </span>
                         )}
                         <span className="mt-1 block text-xs font-normal text-slate-600">

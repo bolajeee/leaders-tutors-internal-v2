@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useId, useState } from "react";
+import DOMPurify from "dompurify";
 import { ChevronDown, Clock3, LockKeyhole, PlayCircle } from "lucide-react";
 import ModalShell from "@/components/ui/ModalShell";
 import SubjectImage from "@/components/ui/SubjectImage";
@@ -16,19 +17,32 @@ const termLessons = (term: AcademicTerm) =>
   term.lessonCount ?? term.weeks.reduce((sum, week) => sum + week.lessons.length, 0);
 
 function LessonRow({ lesson, access, onUnlock }: { lesson: Lesson; access: AccessStatus; onUnlock: () => void }) {
+  const [failedThumbnail, setFailedThumbnail] = useState<string | null>(null);
   const button =
-    "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2";
+    "col-span-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-4 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 sm:col-auto sm:min-h-10 sm:w-auto";
   return (
-    <li className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-700">
-        <PlayCircle className="h-5 w-5" aria-hidden />
-      </span>
+    <li className="grid grid-cols-[5rem_minmax(0,1fr)] gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:flex sm:items-center sm:p-4">
+      {lesson.thumbnailUrl && failedThumbnail !== lesson.thumbnailUrl ? (
+        // Lesson thumbnails are served by the upload host, outside next/image's allow-list.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={lesson.thumbnailUrl}
+          alt=""
+          loading="lazy"
+          onError={() => setFailedThumbnail(lesson.thumbnailUrl ?? null)}
+          className="h-14 w-20 shrink-0 rounded-lg bg-slate-100 object-cover sm:h-12 sm:rounded-xl"
+        />
+      ) : (
+        <span className="grid h-14 w-20 shrink-0 place-items-center rounded-lg bg-orange-50 text-orange-700 sm:h-12 sm:rounded-xl">
+          <PlayCircle className="h-5 w-5" aria-hidden />
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <h5 className="text-sm font-semibold text-slate-900">{lesson.title}</h5>
         <p className="mt-1 line-clamp-2 text-xs text-slate-600">{lesson.summary}</p>
       </div>
       {lesson.duration && (
-        <span className="inline-flex items-center gap-1 text-xs text-slate-600">
+        <span className="col-span-2 inline-flex items-center gap-1 text-xs text-slate-600 sm:col-auto">
           <Clock3 className="h-3.5 w-3.5" aria-hidden />
           <span className="sr-only">Duration </span>
           {lesson.duration}
@@ -103,7 +117,7 @@ function TermCard({
       </h3>
       <div id={panelId} hidden={!open}>
         {open && (
-          <div className="space-y-5 border-t border-slate-100 bg-slate-50 p-4">
+          <div className="space-y-5 border-t border-slate-100 bg-slate-50 p-3 sm:p-4">
             {loadedWeeks.isPending && loadedWeeks.fetchStatus === "fetching" ? (
               <div role="status" className="space-y-2">
                 <div className="skeleton h-16 rounded-xl" />
@@ -161,19 +175,33 @@ export default function CourseModal({
   const lessons = countLessons(subject);
 
   return (
-    <ModalShell isOpen title={subject.name} onClose={onClose} closeLabel="Close course" maxWidth="max-w-3xl">
-      <div className="p-5 sm:p-6">
-        <div className="flex flex-col gap-5 sm:flex-row">
-          <SubjectImage src={subject.imageUrl} className="h-40 w-full rounded-2xl sm:h-32 sm:w-52" />
+    <ModalShell
+      isOpen
+      title={subject.name}
+      onClose={onClose}
+      closeLabel="Close course"
+      maxWidth="max-w-3xl"
+      mobileFullScreen
+    >
+      <div className="p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
+          <SubjectImage src={subject.imageUrl} className="h-32 w-full rounded-xl sm:h-32 sm:w-52 sm:rounded-2xl" />
           <div className="min-w-0">
-            {subject.description && <p className="text-sm leading-6 text-slate-700">{subject.description}</p>}
+            {subject.description && (
+              <div
+                className="text-sm leading-6 text-slate-700 [&_a]:text-primary [&_a]:underline [&_li]:ml-5 [&_ol]:list-decimal [&_p]:mb-2 [&_ul]:list-disc"
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.isSupported ? DOMPurify.sanitize(subject.description) : "",
+                }}
+              />
+            )}
             <p className="mt-3 text-xs font-semibold text-slate-600">
               {plural(subject.terms.length, "term")} · {plural(lessons, "topic")}
             </p>
           </div>
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-5 space-y-3 sm:mt-6">
           {subject.terms.length ? (
             subject.terms.map((term) => (
               <TermCard

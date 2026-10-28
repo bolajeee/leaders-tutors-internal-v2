@@ -84,6 +84,7 @@ describe("live curriculum repository (api mode)", () => {
             summary: "Read, write and order whole numbers.",
             documentStoragePath: "https://leaderstutors.com/uploads/thumbs",
             thumbnail: "whole.png",
+            description: "<p>Learn <strong>whole numbers</strong>.</p>",
             quiz_status: 1,
             quiz_question_counts: 10,
           },
@@ -109,6 +110,7 @@ describe("live curriculum repository (api mode)", () => {
         video: "whole.mp4",
         documentStoragePath_material: "https://leaderstutors.com/uploads/notes",
         material: "whole.pdf",
+        description: "<p>Learn <strong>whole numbers</strong>.</p>",
       },
     ],
   };
@@ -156,6 +158,8 @@ describe("live curriculum repository (api mode)", () => {
       termLabel: "First Term",
       weekLabel: "Week 1",
       thumbnailUrl: "https://leaderstutors.com/uploads/thumbs/whole.png",
+      summary: "Read, write and order whole numbers.",
+      description: "<p>Learn <strong>whole numbers</strong>.</p>",
     });
     // CBT practice has no in-app equivalent yet, so no dead practice link is offered.
     expect(weeks[0].lessons[0].assessment).toBeUndefined();
@@ -175,6 +179,7 @@ describe("live curriculum repository (api mode)", () => {
       weekLabel: "Week 1",
       duration: "12:30",
       videoUrl: "https://leaderstutors.com/uploads/videos/whole.mp4",
+      description: "<p>Learn <strong>whole numbers</strong>.</p>",
     });
     expect(lesson?.materials).toEqual([
       { id: "TUT001-note", title: "Whole numbers lesson note", url: "https://leaderstutors.com/uploads/notes/whole.pdf", kind: "note" },

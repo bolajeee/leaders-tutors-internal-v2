@@ -14,6 +14,8 @@ interface ModalShellProps {
   /** Disable dismissal while an action is in flight. */
   dismissible?: boolean;
   maxWidth?: string;
+  /** Let content-heavy dialogs use the full phone viewport while remaining a card on larger screens. */
+  mobileFullScreen?: boolean;
 }
 
 /** Open modals, innermost last. Only the top one reacts to the keyboard. */
@@ -35,6 +37,7 @@ export default function ModalShell({
   closeLabel = "Close dialog",
   dismissible = true,
   maxWidth = "max-w-md",
+  mobileFullScreen = false,
 }: ModalShellProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -94,7 +97,7 @@ export default function ModalShell({
 
   return (
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/60 p-4"
+      className={`fixed inset-0 z-[70] grid place-items-center bg-slate-950/60 ${mobileFullScreen ? "p-0 sm:p-4" : "p-4"}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && dismissible) onClose();
       }}
@@ -105,16 +108,20 @@ export default function ModalShell({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`max-h-[90vh] w-full ${maxWidth} overflow-y-auto rounded-2xl bg-white shadow-2xl outline-none`}
+        className={`flex w-full ${maxWidth} flex-col overflow-hidden bg-white shadow-2xl outline-none ${
+          mobileFullScreen
+            ? "h-dvh max-h-dvh rounded-none sm:h-auto sm:max-h-[90dvh] sm:rounded-2xl"
+            : "max-h-[calc(100dvh-2rem)] rounded-2xl sm:max-h-[90dvh]"
+        }`}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-5">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 bg-white px-4 py-3 sm:p-5">
           <div className="flex min-w-0 items-center gap-3">
             {icon && (
               <span className="shrink-0 rounded-xl bg-indigo-50 p-2.5 text-[var(--primary-color)]">
                 {icon}
               </span>
             )}
-            <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+            <h2 id={titleId} className="truncate text-base font-semibold text-slate-900 sm:text-lg">
               {title}
             </h2>
           </div>
@@ -128,7 +135,7 @@ export default function ModalShell({
             <X className="h-5 w-5" />
           </button>
         </div>
-        {children}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
       </div>
     </div>
   );
