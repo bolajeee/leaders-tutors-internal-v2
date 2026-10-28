@@ -72,38 +72,46 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
   return (
     <PortalWrapper>
       <div className="mx-auto max-w-6xl px-4 py-7 sm:px-8 sm:py-9">
-        {back}
-
         {lessonQuery.isPending ? (
-          <div role="status" className="mt-6 space-y-4">
-            <div className="skeleton aspect-video rounded-2xl" />
-            <div className="skeleton h-24 rounded-2xl" />
-            <span className="sr-only">Loading lesson</span>
-          </div>
-        ) : lessonQuery.isError ? (
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-white">
-            <ErrorState
-              title="Lesson unavailable"
-              message={lessonQuery.error instanceof Error ? lessonQuery.error.message : "We could not load this lesson."}
-              onRetry={() => void lessonQuery.refetch()}
-            />
-          </div>
-        ) : !lesson ? (
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-white">
-            <EmptyPanel
-              icon={BookOpen}
-              title="Lesson not found"
-              message="This lesson may have moved or is not available yet."
-              action={
-                <Link href="/tutorials" className="font-semibold text-[var(--primary-color)] underline">
-                  Browse tutorials
-                </Link>
-              }
-            />
-          </div>
-        ) : (
           <>
-            <header className="mt-5">
+            {back}
+            <div role="status" className="mt-6 space-y-4">
+              <div className="skeleton aspect-video rounded-2xl" />
+              <div className="skeleton h-24 rounded-2xl" />
+              <span className="sr-only">Loading lesson</span>
+            </div>
+          </>
+        ) : lessonQuery.isError ? (
+          <>
+            {back}
+            <div className="mt-8 rounded-2xl border border-slate-200 bg-white">
+              <ErrorState
+                title="Lesson unavailable"
+                message={lessonQuery.error instanceof Error ? lessonQuery.error.message : "We could not load this lesson."}
+                onRetry={() => void lessonQuery.refetch()}
+              />
+            </div>
+          </>
+        ) : !lesson ? (
+          <>
+            {back}
+            <div className="mt-8 rounded-2xl border border-slate-200 bg-white">
+              <EmptyPanel
+                icon={BookOpen}
+                title="Lesson not found"
+                message="This lesson may have moved or is not available yet."
+                action={
+                  <Link href="/tutorials" className="font-semibold text-[var(--primary-color)] underline">
+                    Browse tutorials
+                  </Link>
+                }
+              />
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col">
+            <div className={unlocked ? "hidden sm:order-1 sm:block" : "order-1"}>{back}</div>
+            <header className={`${unlocked ? "hidden sm:order-2 sm:block" : "order-2"} mt-5`}>
               <p className="text-xs font-semibold uppercase tracking-widest text-[var(--secondary-hover-color)]">
                 {lesson.subjectName} · {lesson.termLabel} · {lesson.weekLabel}
               </p>
@@ -122,12 +130,28 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
               </div>
             </header>
 
+            {unlocked && (
+              <div className="order-1 -mx-4 flex min-h-22 items-center gap-3 border-y border-indigo-100 bg-white px-4 py-3 sm:hidden">
+                <Link
+                  href="/tutorials"
+                  aria-label="Back to tutorials"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-indigo-50 text-[var(--primary-color)]"
+                >
+                  <ArrowLeft className="h-5 w-5" aria-hidden />
+                </Link>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Now watching</p>
+                  <p className="mt-0.5 truncate text-lg font-semibold text-[var(--primary-color)]">{lesson.title}</p>
+                </div>
+              </div>
+            )}
+
             {access === "loading" ? (
-              <div role="status" className="mt-7 skeleton aspect-video rounded-2xl">
+              <div role="status" className="order-3 mt-7 skeleton aspect-video rounded-2xl">
                 <span className="sr-only">Checking your subscription</span>
               </div>
             ) : access === "error" ? (
-              <div className="mt-7 rounded-2xl border border-amber-200 bg-amber-50">
+              <div className="order-3 mt-7 rounded-2xl border border-amber-200 bg-amber-50">
                 <ErrorState
                   title="We couldn't confirm your subscription"
                   message="This lesson stays locked until your access is confirmed."
@@ -135,7 +159,7 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
                 />
               </div>
             ) : !unlocked ? (
-              <div className="mt-7 rounded-2xl border border-orange-200 bg-orange-50 p-8 text-center sm:p-10">
+              <div className="order-3 mt-7 rounded-2xl border border-orange-200 bg-orange-50 p-8 text-center sm:p-10">
                 <LockKeyhole className="mx-auto h-10 w-10 text-orange-700" aria-hidden />
                 <h2 className="mt-4 text-2xl font-semibold text-slate-900">Renew to open this lesson</h2>
                 <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-700">
@@ -151,11 +175,47 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
               </div>
             ) : (
               <>
-                <div className="mt-7 overflow-hidden rounded-2xl bg-slate-950 shadow-xl">
-                  <SecureVideoPlayer src={lesson.videoUrl} poster={lesson.thumbnailUrl} title={lesson.title} />
+                <div className="order-2 -mx-4 flex min-h-[calc(100dvh-9.25rem)] flex-col justify-center gap-4 bg-slate-950 px-4 py-8 sm:order-3 sm:mx-0 sm:mt-7 sm:block sm:min-h-0 sm:overflow-hidden sm:rounded-2xl sm:p-0 sm:shadow-xl">
+                  <div className="w-full overflow-hidden rounded-2xl sm:rounded-none">
+                    <SecureVideoPlayer src={lesson.videoUrl} poster={lesson.thumbnailUrl} title={lesson.title} />
+                  </div>
+                  {lesson.materials.length > 0 && (
+                    <div className="space-y-2 sm:hidden" aria-label="Tutorial materials">
+                      {lesson.materials.map((material) => (
+                        <a
+                          key={material.id}
+                          href={material.url}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex min-h-16 items-center gap-3 rounded-2xl bg-white px-4 text-sm font-semibold text-[var(--primary-color)] shadow-lg"
+                        >
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-50">
+                            <Download className="h-5 w-5" aria-hidden />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate">Tutorial material</span>
+                          <span className="shrink-0 text-xs uppercase">Open</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_320px]">
-                  <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="order-3 mt-5 grid gap-4 sm:order-4 sm:mt-6 sm:gap-5 lg:grid-cols-[1fr_320px]">
+                  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                    <div className="sm:hidden">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone="brand">{lesson.subjectName}</Badge>
+                        <Badge tone="neutral">{lesson.termLabel}</Badge>
+                        {lesson.duration && (
+                          <Badge tone="warning">
+                            <Clock3 className="h-3 w-3" aria-hidden />
+                            {lesson.duration}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-4 text-2xl font-semibold leading-tight tracking-tight text-slate-900">{lesson.title}</p>
+                      <div className="my-5 border-t border-slate-100" />
+                    </div>
                     <h2 className="text-lg font-semibold text-slate-900">About this lesson</h2>
                     {lesson.description ? (
                       <div
@@ -167,7 +227,7 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
                     )}
                   </section>
                   <aside className="space-y-4" aria-label="Lesson resources">
-                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <section className="hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:block">
                       <h2 className="font-semibold text-slate-900">Notes and materials</h2>
                       {lesson.materials.length ? (
                         <ul className="mt-4 space-y-2">
@@ -204,7 +264,7 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
                 </div>
               </>
             )}
-          </>
+          </div>
         )}
       </div>
       <SubscriptionModal isOpen={showRenewal} onClose={() => setShowRenewal(false)} />

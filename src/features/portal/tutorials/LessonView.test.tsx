@@ -19,12 +19,24 @@ describe("lesson page", () => {
 
       // Subject / term / week / duration metadata.
       expect(screen.getByText(/Basic Science · First Term · Week 1/)).toBeInTheDocument();
-      expect(screen.getByText("12:30")).toBeInTheDocument();
+      expect(screen.getAllByText("12:30")).toHaveLength(2);
 
       const video = container.querySelector("video");
       expect(video).not.toBeNull();
       expect(video).toHaveAttribute("src", expect.stringContaining(".mp4"));
       expect(video).toHaveAttribute("controlslist", expect.stringContaining("nodownload"));
+      // On phones the full-bleed player is ordered before the title/content;
+      // the sm: classes restore the established desktop order and card shape.
+      expect(video?.parentElement?.parentElement).toHaveClass(
+        "order-2",
+        "min-h-[calc(100dvh-9.25rem)]",
+        "justify-center",
+        "sm:order-3",
+        "sm:min-h-0",
+      );
+      expect(screen.getByText(/now watching/i)).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1 }).closest("header")).toHaveClass("hidden", "sm:order-2");
+      expect(screen.getByLabelText(/tutorial materials/i)).toBeInTheDocument();
 
       const note = screen.getByRole("link", { name: /lesson note/i });
       expect(note).toHaveAttribute("href", "/sample-lesson-note.txt");
