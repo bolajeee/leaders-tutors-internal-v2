@@ -3,6 +3,8 @@ import { useAuthStore } from "@/store/authStore";
 import { fetchUserSubscription } from "@/services/portal";
 import { fetchUserTransactions } from "@/services/payment";
 import { getCurriculumRepository } from "@/services/curriculum";
+import { fetchCbtSummary, startOrResumeCbt } from "@/services/cbt";
+import { isMockMode } from "@/lib/config";
 import { resolveAccess } from "@/services/access";
 import type { AcademicTerm } from "@/types/curriculum";
 
@@ -66,6 +68,26 @@ export const useLesson = (lessonId: string) => {
   return useQuery({
     queryKey: ["lesson", identity, lessonId],
     queryFn: () => getCurriculumRepository().getLesson(lessonId),
+    retry: false,
+  });
+};
+
+export const useCbtSummary = (lessonId: string, enabled = true) => {
+  const identity = useIdentity();
+  return useQuery({
+    queryKey: ["cbt-summary", identity, lessonId],
+    queryFn: () => fetchCbtSummary(lessonId),
+    enabled: enabled && Boolean(lessonId) && !isMockMode(),
+    retry: false,
+  });
+};
+
+export const useCbtQuiz = (lessonId: string, enabled = true) => {
+  const identity = useIdentity();
+  return useQuery({
+    queryKey: ["cbt-quiz", identity, lessonId],
+    queryFn: () => startOrResumeCbt(lessonId),
+    enabled: enabled && Boolean(lessonId) && !isMockMode(),
     retry: false,
   });
 };

@@ -7,7 +7,7 @@ import {
   ArrowLeft,
   BookOpen,
   Clock3,
-  Download,
+  Eye,
   ExternalLink,
   FileQuestion,
   FileText,
@@ -15,12 +15,13 @@ import {
 } from "lucide-react";
 import { PortalWrapper } from "../PortalWrapper";
 import SecureVideoPlayer from "@/components/tutorial/SecureVideoPlayer";
+import MaterialPreviewModal from "@/components/tutorial/MaterialPreviewModal";
 import SubscriptionModal from "@/components/subscription/SubscriptionModal";
 import { Badge } from "@/components/ui";
 import { EmptyPanel, ErrorState } from "@/components/ui/State";
-import { useLesson, useSubscription } from "@/hooks/usePortalData";
+import { useCbtSummary, useLesson, useSubscription } from "@/hooks/usePortalData";
 import { canOpenLesson } from "@/services/access";
-import type { AssessmentLink } from "@/types/curriculum";
+import type { AssessmentLink, LessonMaterial } from "@/types/curriculum";
 
 const isExternal = (url: string) => /^https?:\/\//i.test(url);
 
@@ -55,8 +56,11 @@ function AssessmentAction({ assessment }: { assessment: AssessmentLink }) {
 export default function LessonView({ lessonId }: { lessonId: string }) {
   const lessonQuery = useLesson(lessonId);
   const { access, refetch: refetchAccess } = useSubscription();
+  const cbtQuery = useCbtSummary(lessonId, access === "active");
   const [showRenewal, setShowRenewal] = useState(false);
+  const [previewMaterial, setPreviewMaterial] = useState<LessonMaterial | null>(null);
   const lesson = lessonQuery.data;
+  const assessment = lesson?.assessment ?? cbtQuery.data?.assessment;
   const unlocked = canOpenLesson(access);
 
   const back = (
@@ -182,20 +186,18 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
                   {lesson.materials.length > 0 && (
                     <div className="space-y-2 sm:hidden" aria-label="Tutorial materials">
                       {lesson.materials.map((material) => (
-                        <a
+                        <button
+                          type="button"
                           key={material.id}
-                          href={material.url}
-                          download
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          onClick={() => setPreviewMaterial(material)}
                           className="flex min-h-16 items-center gap-3 rounded-2xl bg-white px-4 text-sm font-semibold text-[var(--primary-color)] shadow-lg"
                         >
                           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-50">
-                            <Download className="h-5 w-5" aria-hidden />
+                            <Eye className="h-5 w-5" aria-hidden />
                           </span>
                           <span className="min-w-0 flex-1 truncate">Tutorial material</span>
-                          <span className="shrink-0 text-xs uppercase">Open</span>
-                        </a>
+                          <span className="shrink-0 text-xs uppercase">Preview</span>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -233,16 +235,14 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
                         <ul className="mt-4 space-y-2">
                           {lesson.materials.map((material) => (
                             <li key={material.id}>
-                              <a
-                                href={material.url}
-                                download
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex min-h-11 items-center gap-2 rounded-xl bg-indigo-50 px-4 text-sm font-semibold text-[var(--primary-color)] hover:bg-indigo-100"
+                              <button
+                                type="button"
+                                onClick={() => setPreviewMaterial(material)}
+                                className="flex min-h-11 w-full items-center gap-2 rounded-xl bg-indigo-50 px-4 text-left text-sm font-semibold text-[var(--primary-color)] hover:bg-indigo-100"
                               >
-                                <Download className="h-4 w-4 shrink-0" aria-hidden />
+                                <Eye className="h-4 w-4 shrink-0" aria-hidden />
                                 <span className="min-w-0 break-words">{material.title}</span>
-                              </a>
+                              </button>
                             </li>
                           ))}
                         </ul>
@@ -253,8 +253,20 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
                         </p>
                       )}
                     </section>
-                    {lesson.assessment ? (
-                      <AssessmentAction assessment={lesson.assessment} />
+                    {assessment ? (
+                      <AssessmentAction assessment={assessment} />
+                    ) : cbtQuery.isError ? (
+                      <button
+                        type="button"
+                        onClick={() => void cbtQuery.refetch()}
+                        className="w-full rounded-2xl border border-amber-300 bg-amber-50 p-4 text-left text-sm font-semibold text-amber-900"
+                      >
+                        CBT could not be loaded. Tap to try again.
+                      </button>
+                    ) : cbtQuery.isPending && cbtQuery.fetchStatus === "fetching" ? (
+                      <div role="status" className="skeleton h-16 rounded-2xl">
+                        <span className="sr-only">Checking CBT practice</span>
+                      </div>
                     ) : (
                       <p className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm leading-6 text-slate-600">
                         CBT practice isn&apos;t available for this lesson yet.
@@ -267,6 +279,7 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
           </div>
         )}
       </div>
+      <MaterialPreviewModal material={previewMaterial} onClose={() => setPreviewMaterial(null)} />
       <SubscriptionModal isOpen={showRenewal} onClose={() => setShowRenewal(false)} />
     </PortalWrapper>
   );

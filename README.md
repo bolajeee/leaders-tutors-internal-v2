@@ -33,7 +33,7 @@ Things to know:
 
 - The API has no "fetch my subscription" call. Login, payment and renewal replies carry the plan and wallet, so the app keeps the latest of those (`account` in the auth store) and works out days left from the plan's end date.
 - Changing the password from inside the portal is unavailable (the API has no such call); students use "Forgot password" on the login page.
-- CBT practice is not wired yet; lessons show that practice is unavailable.
+- CBT practice uses `/user/cbt/fetch-cbt-summary`, `/user/cbt/start-resume-quiz`, and `/user/cbt/fetch-quiz-question`.
 
 ## Quality checks
 

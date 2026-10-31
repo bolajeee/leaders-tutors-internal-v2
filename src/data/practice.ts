@@ -1,11 +1,4 @@
-export interface PracticeQuestion {
-  id: string;
-  prompt: string;
-  options: string[];
-  /** Index into `options`. */
-  answer: number;
-  explanation: string;
-}
+import type { PracticeQuestion } from "@/types/cbt";
 
 /** Mock-mode CBT practice sets, keyed by lesson id. */
 export const practiceQuestions: Record<string, PracticeQuestion[]> = {

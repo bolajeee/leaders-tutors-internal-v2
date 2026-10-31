@@ -38,9 +38,9 @@ describe("lesson page", () => {
       expect(screen.getByRole("heading", { level: 1 }).closest("header")).toHaveClass("hidden", "sm:order-2");
       expect(screen.getByLabelText(/tutorial materials/i)).toBeInTheDocument();
 
-      const note = screen.getByRole("link", { name: /lesson note/i });
-      expect(note).toHaveAttribute("href", "/sample-lesson-note.txt");
-      expect(note).toHaveAttribute("download");
+      const note = screen.getByRole("button", { name: /lesson note/i });
+      expect(note).not.toHaveAttribute("href");
+      expect(note).not.toHaveAttribute("download");
 
       expect(screen.getByRole("link", { name: /take cbt practice/i })).toHaveAttribute(
         "href",
@@ -83,7 +83,7 @@ describe("lesson page", () => {
       expect(await screen.findByRole("heading", { name: /renew to open this lesson/i })).toBeInTheDocument();
       expect(screen.getByRole("heading", { level: 1, name: "Living and non-living things" })).toBeInTheDocument();
       expect(container.querySelector("video")).toBeNull();
-      expect(screen.queryByRole("link", { name: /lesson note/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /lesson note/i })).not.toBeInTheDocument();
       expect(screen.queryByRole("link", { name: /cbt/i })).not.toBeInTheDocument();
     });
 
