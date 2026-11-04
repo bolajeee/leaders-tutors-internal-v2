@@ -62,10 +62,11 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
   const lesson = lessonQuery.data;
   const assessment = lesson?.assessment ?? cbtQuery.data?.assessment;
   const unlocked = canOpenLesson(access);
+  const tutorialsHref = lesson ? `/tutorials?subject=${encodeURIComponent(lesson.subjectId)}` : "/tutorials";
 
   const back = (
     <Link
-      href="/tutorials"
+      href={tutorialsHref}
       className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[var(--primary-color)] hover:bg-indigo-50"
     >
       <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -137,7 +138,7 @@ export default function LessonView({ lessonId }: { lessonId: string }) {
             {unlocked && (
               <div className="order-1 -mx-4 flex min-h-22 items-center gap-3 border-y border-indigo-100 bg-white px-4 py-3 sm:hidden">
                 <Link
-                  href="/tutorials"
+                  href={tutorialsHref}
                   aria-label="Back to tutorials"
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-indigo-50 text-[var(--primary-color)]"
                 >
