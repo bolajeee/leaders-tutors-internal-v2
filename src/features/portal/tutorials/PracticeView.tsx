@@ -89,104 +89,110 @@ function LiveCbtPractice({
   };
 
   return (
-    <div className="mt-6 space-y-5">
-      <header className="flex items-start justify-between gap-4">
-        <div>
+    <div className="mt-6 lg:grid lg:grid-cols-[1fr_260px] lg:items-start lg:gap-6">
+      <div className="space-y-5">
+        <header>
           <p className="text-xs font-semibold uppercase tracking-widest text-[var(--secondary-hover-color)]">CBT practice</p>
           <h1 className="mt-2 text-2xl font-semibold text-slate-900">{lessonTitle}</h1>
           <p className="mt-2 text-sm text-slate-600">
             Question {currentButton?.number ?? session.displayQuestionNo} of {session.buttons.length}
           </p>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Time remaining</p>
-          <p className="mt-1 text-lg font-semibold text-[var(--primary-color)]">{formatDuration(secondsLeft)}</p>
-        </div>
-      </header>
+        </header>
 
-      {session.buttons.length > 1 && (
-        <nav aria-label="CBT questions" className="flex flex-wrap gap-2">
-          {session.buttons.map((button) => {
-            const active = button.questionId === question.id;
-            const done = attempted.has(button.questionId);
-            return (
-              <button
-                key={button.questionId}
-                type="button"
-                disabled={busy}
-                aria-current={active ? "step" : undefined}
-                aria-label={`Question ${button.number}${done ? ", attempted" : ""}`}
-                onClick={() => void openQuestion(button.questionId)}
-                className={`grid h-10 w-10 place-items-center rounded-lg border text-sm font-semibold ${
-                  active
-                    ? "border-[var(--primary-color)] bg-[var(--primary-color)] text-white"
-                    : done
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                      : "border-slate-300 bg-white text-slate-700"
-                }`}
-              >
-                {button.number}
-              </button>
-            );
-          })}
-        </nav>
-      )}
+        {message && <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm font-semibold text-slate-900">{message}</p>}
+        {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800">{error}</p>}
 
-      {message && <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm font-semibold text-slate-900">{message}</p>}
-      {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800">{error}</p>}
-
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submitAnswer();
-        }}
-        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-      >
-        <fieldset disabled={busy || isAttempted}>
-          <legend className="text-base font-semibold leading-7 text-slate-900">{question.prompt}</legend>
-          {question.imageUrl && (
-            // CBT images are served by the upload host, outside next/image's allow-list.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={question.imageUrl} alt="Question illustration" className="mt-4 max-h-64 w-full rounded-xl object-contain" />
-          )}
-          <div className="mt-4 space-y-3">
-            {question.options.map((option) => (
-              <label
-                key={option.id}
-                className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm ${
-                  selectedOptionId === option.id
-                    ? "border-[var(--primary-color)] bg-indigo-50"
-                    : "border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name={question.id}
-                  value={option.id}
-                  checked={selectedOptionId === option.id}
-                  onChange={() => setSelectedOptionId(option.id)}
-                  className="h-4 w-4 shrink-0 accent-[var(--primary-color)]"
-                />
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-slate-300 text-xs font-semibold text-slate-700">
-                  {option.id}
-                </span>
-                {option.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={option.imageUrl} alt="" className="h-12 w-16 shrink-0 rounded-lg object-cover" />
-                )}
-                <span className="min-w-0 flex-1">{option.text}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <button
-          type="submit"
-          disabled={busy || isAttempted || !selectedOptionId}
-          className="mt-5 min-h-11 w-full rounded-xl bg-[var(--primary-color)] px-5 text-sm font-semibold text-white disabled:opacity-50"
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitAnswer();
+          }}
+          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
         >
-          {busy ? "Saving…" : isAttempted ? "Question attempted" : "Submit answer"}
-        </button>
-      </form>
+          <fieldset disabled={busy || isAttempted}>
+            <legend className="text-base font-semibold leading-7 text-slate-900">{question.prompt}</legend>
+            {question.imageUrl && (
+              // CBT images are served by the upload host, outside next/image's allow-list.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={question.imageUrl} alt="Question illustration" className="mt-4 max-h-64 w-full rounded-xl object-contain" />
+            )}
+            <div className="mt-4 space-y-3">
+              {question.options.map((option) => (
+                <label
+                  key={option.id}
+                  className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm ${
+                    selectedOptionId === option.id
+                      ? "border-[var(--primary-color)] bg-indigo-50"
+                      : "border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={question.id}
+                    value={option.id}
+                    checked={selectedOptionId === option.id}
+                    onChange={() => setSelectedOptionId(option.id)}
+                    className="h-4 w-4 shrink-0 accent-[var(--primary-color)]"
+                  />
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-slate-300 text-xs font-semibold text-slate-700">
+                    {option.id}
+                  </span>
+                  {option.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={option.imageUrl} alt="" className="h-12 w-16 shrink-0 rounded-lg object-cover" />
+                  )}
+                  <span className="min-w-0 flex-1">{option.text}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <button
+            type="submit"
+            disabled={busy || isAttempted || !selectedOptionId}
+            className="mt-5 min-h-11 w-full rounded-xl bg-[var(--primary-color)] px-5 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {busy ? "Saving…" : isAttempted ? "Question attempted" : "Submit answer"}
+          </button>
+        </form>
+      </div>
+
+      <aside className="mt-5 space-y-4 lg:sticky lg:top-4 lg:mt-0" aria-label="Practice progress">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Time remaining</p>
+          <p className="mt-1 text-xl font-semibold text-[var(--primary-color)]">{formatDuration(secondsLeft)}</p>
+        </div>
+
+        {session.buttons.length > 1 && (
+          <nav aria-label="CBT questions" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Questions</p>
+            <div className="flex flex-wrap gap-2">
+              {session.buttons.map((button) => {
+                const active = button.questionId === question.id;
+                const done = attempted.has(button.questionId);
+                return (
+                  <button
+                    key={button.questionId}
+                    type="button"
+                    disabled={busy}
+                    aria-current={active ? "step" : undefined}
+                    aria-label={`Question ${button.number}${done ? ", attempted" : ""}`}
+                    onClick={() => void openQuestion(button.questionId)}
+                    className={`grid h-10 w-10 place-items-center rounded-lg border text-sm font-semibold ${
+                      active
+                        ? "border-[var(--primary-color)] bg-[var(--primary-color)] text-white"
+                        : done
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                          : "border-slate-300 bg-white text-slate-700"
+                    }`}
+                  >
+                    {button.number}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        )}
+      </aside>
     </div>
   );
 }
@@ -212,7 +218,7 @@ export default function PracticeView({ lessonId }: { lessonId: string }) {
 
   return (
     <PortalWrapper>
-      <div className="mx-auto max-w-3xl px-4 py-7 sm:px-8 sm:py-9">
+      <div className="mx-auto max-w-5xl px-4 py-7 sm:px-8 sm:py-9">
         <Link href={backHref} className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[var(--primary-color)] hover:bg-indigo-50">
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Back to lesson
@@ -270,82 +276,115 @@ export default function PracticeView({ lessonId }: { lessonId: string }) {
             <EmptyPanel icon={FileQuestion} title="Questions are being prepared" message="Check back soon for this lesson's practice questions." />
           </div>
         ) : (
-          <form
-            className="mt-6 space-y-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setSubmitted(true);
-            }}
-          >
-            <header>
-              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--secondary-hover-color)]">CBT practice</p>
-              <h1 className="mt-2 text-2xl font-semibold text-slate-900">{lesson.title}</h1>
-            </header>
+          <div className="mt-6 lg:grid lg:grid-cols-[1fr_260px] lg:items-start lg:gap-6">
+            <form
+              className="space-y-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSubmitted(true);
+              }}
+            >
+              <header>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--secondary-hover-color)]">CBT practice</p>
+                <h1 className="mt-2 text-2xl font-semibold text-slate-900">{lesson.title}</h1>
+              </header>
 
-            {submitted && (
-              <p role="status" className="rounded-2xl bg-indigo-50 p-4 text-sm font-semibold text-slate-900">
-                You scored {score} out of {questions.length}.
-              </p>
-            )}
+              {submitted && (
+                <p role="status" className="rounded-2xl bg-indigo-50 p-4 text-sm font-semibold text-slate-900">
+                  You scored {score} out of {questions.length}.
+                </p>
+              )}
 
-            {questions.map((question, index) => (
-              <fieldset key={question.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <legend className="px-1 text-sm font-semibold text-slate-900">
-                  {index + 1}. {question.prompt}
-                </legend>
-                <div className="mt-3 space-y-2">
-                  {question.options.map((option, optionIndex) => {
-                    const chosen = answers[question.id] === optionIndex;
-                    const correct = submitted && optionIndex === question.answer;
-                    const wrong = submitted && chosen && !correct;
+              {questions.map((question, index) => (
+                <fieldset key={question.id} id={`question-${question.id}`} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <legend className="px-1 text-sm font-semibold text-slate-900">
+                    {index + 1}. {question.prompt}
+                  </legend>
+                  <div className="mt-3 space-y-2">
+                    {question.options.map((option, optionIndex) => {
+                      const chosen = answers[question.id] === optionIndex;
+                      const correct = submitted && optionIndex === question.answer;
+                      const wrong = submitted && chosen && !correct;
+                      return (
+                        <label
+                          key={option}
+                          className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-4 text-sm ${
+                            correct ? "border-emerald-300 bg-emerald-50" : wrong ? "border-red-300 bg-red-50" : "border-slate-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={question.id}
+                            value={optionIndex}
+                            checked={chosen}
+                            disabled={submitted}
+                            onChange={() => setAnswers((current) => ({ ...current, [question.id]: optionIndex }))}
+                            className="h-4 w-4 accent-[var(--primary-color)]"
+                          />
+                          <span className="flex-1">{option}</span>
+                          {correct && <CheckCircle2 className="h-4 w-4 text-emerald-700" aria-label="Correct answer" />}
+                          {wrong && <XCircle className="h-4 w-4 text-red-700" aria-label="Your answer was incorrect" />}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {submitted && <p className="mt-3 text-xs leading-5 text-slate-600">{question.explanation}</p>}
+                </fieldset>
+              ))}
+
+              {submitted ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAnswers({});
+                    setSubmitted(false);
+                  }}
+                  className="min-h-11 rounded-xl border border-slate-300 px-5 text-sm font-semibold text-slate-800"
+                >
+                  Try again
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={Object.keys(answers).length < questions.length}
+                  className="min-h-11 rounded-xl bg-[var(--primary-color)] px-5 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  Submit answers
+                </button>
+              )}
+            </form>
+
+            <aside className="mt-5 space-y-4 lg:sticky lg:top-4 lg:mt-0" aria-label="Practice progress">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Progress</p>
+                <p className="mt-1 text-xl font-semibold text-[var(--primary-color)]">
+                  {Object.keys(answers).length} / {questions.length}
+                </p>
+              </div>
+              <nav aria-label="CBT questions" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Questions</p>
+                <div className="flex flex-wrap gap-2">
+                  {questions.map((question, index) => {
+                    const done = answers[question.id] !== undefined;
                     return (
-                      <label
-                        key={option}
-                        className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-4 text-sm ${
-                          correct ? "border-emerald-300 bg-emerald-50" : wrong ? "border-red-300 bg-red-50" : "border-slate-200 hover:bg-slate-50"
+                      <a
+                        key={question.id}
+                        href={`#question-${question.id}`}
+                        aria-label={`Question ${index + 1}${done ? ", answered" : ""}`}
+                        className={`grid h-10 w-10 place-items-center rounded-lg border text-sm font-semibold ${
+                          done
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                            : "border-slate-300 bg-white text-slate-700"
                         }`}
                       >
-                        <input
-                          type="radio"
-                          name={question.id}
-                          value={optionIndex}
-                          checked={chosen}
-                          disabled={submitted}
-                          onChange={() => setAnswers((current) => ({ ...current, [question.id]: optionIndex }))}
-                          className="h-4 w-4 accent-[var(--primary-color)]"
-                        />
-                        <span className="flex-1">{option}</span>
-                        {correct && <CheckCircle2 className="h-4 w-4 text-emerald-700" aria-label="Correct answer" />}
-                        {wrong && <XCircle className="h-4 w-4 text-red-700" aria-label="Your answer was incorrect" />}
-                      </label>
+                        {index + 1}
+                      </a>
                     );
                   })}
                 </div>
-                {submitted && <p className="mt-3 text-xs leading-5 text-slate-600">{question.explanation}</p>}
-              </fieldset>
-            ))}
-
-            {submitted ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setAnswers({});
-                  setSubmitted(false);
-                }}
-                className="min-h-11 rounded-xl border border-slate-300 px-5 text-sm font-semibold text-slate-800"
-              >
-                Try again
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={Object.keys(answers).length < questions.length}
-                className="min-h-11 rounded-xl bg-[var(--primary-color)] px-5 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                Submit answers
-              </button>
-            )}
-          </form>
+              </nav>
+            </aside>
+          </div>
         )}
       </div>
     </PortalWrapper>
