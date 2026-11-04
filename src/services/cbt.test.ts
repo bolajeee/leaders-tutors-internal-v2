@@ -19,6 +19,7 @@ describe("live CBT", () => {
     expect(await fetchCbtSummary("TUT001")).toEqual({
       assessment: { label: "Whole numbers practice", url: "/tutorials/TUT001/practice", questionCount: 2 },
       questions: [],
+      durationSeconds: 0,
     });
     expect(liveCall).toHaveBeenCalledWith("/user/cbt/fetch-cbt-summary", { tutorial_id: "TUT001" });
   });
@@ -76,11 +77,12 @@ describe("live CBT", () => {
           options: [
             { option_id: "A", option_text: "man", option_pix: "man.png", optionsStoragePath: "https://leaderstutors.com/options" },
             { option_id: "B", option_text: "non-living thing", option_pix: "", optionsStoragePath: "https://leaderstutors.com/options" },
+            { option_id: "C", option_text: "a rock", option_pix: "avatar.jpg", optionsStoragePath: "https://leaderstutors.com/options" },
           ],
         }],
       });
 
-    const result = await startOrResumeCbt("TUT1528");
+    const result = await startOrResumeCbt("TUT1528", 900);
 
     expect(result.session).toEqual({
       tutorialId: "TUT1528",
@@ -90,6 +92,7 @@ describe("live CBT", () => {
         { number: 1, questionId: "QUES1", attempted: false },
         { number: 2, questionId: "QUES2", attempted: true },
       ],
+      durationSeconds: 900,
     });
     expect(result.question).toEqual({
       id: "QUES1",
@@ -99,11 +102,16 @@ describe("live CBT", () => {
       options: [
         { id: "A", text: "man", imageUrl: "https://leaderstutors.com/options/man.png" },
         { id: "B", text: "non-living thing", imageUrl: undefined },
+        // "avatar.jpg" is the API's stock filler for an unset option image, not a real upload.
+        { id: "C", text: "a rock", imageUrl: undefined },
       ],
     });
     expect(vi.mocked(liveCall).mock.calls).toEqual([
       ["/user/cbt/start-resume-quiz", { tutorial_id: "TUT1528" }],
-      ["/user/cbt/fetch-quiz-question", { tutorial_id: "TUT1528", question_id: "QUES1" }],
+      [
+        "/user/cbt/fetch-quiz-question",
+        { tutorial_id: "TUT1528", question_id: "QUES1", available_time: "00:15:00" },
+      ],
     ]);
   });
 

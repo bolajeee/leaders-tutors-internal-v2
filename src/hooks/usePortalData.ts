@@ -74,20 +74,22 @@ export const useLesson = (lessonId: string) => {
 
 export const useCbtSummary = (lessonId: string, enabled = true) => {
   const identity = useIdentity();
+  const token = useAuthStore((state) => state.token);
   return useQuery({
     queryKey: ["cbt-summary", identity, lessonId],
     queryFn: () => fetchCbtSummary(lessonId),
-    enabled: enabled && Boolean(lessonId) && !isMockMode(),
+    enabled: enabled && Boolean(lessonId) && Boolean(token) && !isMockMode(),
     retry: false,
   });
 };
 
-export const useCbtQuiz = (lessonId: string, enabled = true) => {
+export const useCbtQuiz = (lessonId: string, durationSeconds: number, enabled = true) => {
   const identity = useIdentity();
+  const token = useAuthStore((state) => state.token);
   return useQuery({
     queryKey: ["cbt-quiz", identity, lessonId],
-    queryFn: () => startOrResumeCbt(lessonId),
-    enabled: enabled && Boolean(lessonId) && !isMockMode(),
+    queryFn: () => startOrResumeCbt(lessonId, durationSeconds),
+    enabled: enabled && Boolean(lessonId) && Boolean(token) && Boolean(durationSeconds) && !isMockMode(),
     retry: false,
   });
 };

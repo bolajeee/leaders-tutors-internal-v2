@@ -15,6 +15,20 @@ const numberValue = (source: Raw, keys: string[]) => {
   return 0;
 };
 
+const parseDuration = (value: string): number => {
+  const match = /^(\d+):(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!match) return 0;
+  const [, hours, minutes, seconds] = match;
+  return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
+};
+
+/** Formats a seconds count as the API's HH:MM:SS duration string. */
+export const formatDuration = (totalSeconds: number): string => {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(seconds / 3600))}:${pad(Math.floor((seconds % 3600) / 60))}:${pad(seconds % 60)}`;
+};
+
 const plainText = (value: string) =>
   value
     .replace(/<[^>]*>/g, " ")
@@ -119,6 +133,9 @@ export const fetchCbtSummary = async (tutorialId: string): Promise<CbtSummary | 
 
   if (questionCount <= 0 && questions.length === 0 && !externalUrl) return null;
 
+  const durationSeconds =
+    parseDuration(text(summary, ["quiz_duration"])) || parseDuration(text(reply, ["quiz_duration"]));
+
   return {
     assessment: {
       label: text(summary, ["title", "cbt_title", "quiz_title", "name"], "Take CBT practice"),
@@ -126,17 +143,21 @@ export const fetchCbtSummary = async (tutorialId: string): Promise<CbtSummary | 
       questionCount: questionCount || undefined,
     },
     questions,
+    durationSeconds,
   };
 };
 
+/** The API fills empty image slots with this stock filename; it isn't a real upload. */
+const PLACEHOLDER_IMAGE = "avatar.jpg";
+
 const fileUrl = (folder: string, file: string) => {
-  if (!file) return undefined;
+  if (!file || file.toLowerCase() === PLACEHOLDER_IMAGE) return undefined;
   if (/^(?:https?:)?\/\//i.test(file) || !folder) return file;
   return `${folder.replace(/\/+$/, "")}/${file.replace(/^\/+/, "")}`;
 };
 
 /** Starts a new attempt or resumes the student's existing attempt for this tutorial. */
-export const startResumeQuiz = async (tutorialId: string): Promise<CbtQuizSession> => {
+export const startResumeQuiz = async (tutorialId: string, durationSeconds: number): Promise<CbtQuizSession> => {
   const reply = await liveCall("/user/cbt/start-resume-quiz", { tutorial_id: tutorialId });
   const buttons = rows(reply.buttons).flatMap((button) => {
     const questionId = text(button, ["question_id"]);
@@ -154,6 +175,7 @@ export const startResumeQuiz = async (tutorialId: string): Promise<CbtQuizSessio
     displayQuestionNo: numberValue(reply, ["display_question_no"]) || buttons.find((item) => item.questionId === displayQuestionId)?.number || 1,
     displayQuestionId,
     buttons,
+    durationSeconds,
   };
 };
 
@@ -189,10 +211,15 @@ const mapCbtQuestion = (reply: Raw): CbtQuestion | null => {
 };
 
 /** Fetches one server-controlled question from the active tutorial attempt. */
-export const fetchQuizQuestion = async (session: CbtQuizSession, questionId = session.displayQuestionId) => {
+export const fetchQuizQuestion = async (
+  session: CbtQuizSession,
+  questionId = session.displayQuestionId,
+  availableTimeSeconds = session.durationSeconds,
+) => {
   const reply = await liveCall("/user/cbt/fetch-quiz-question", {
     tutorial_id: session.tutorialId,
     question_id: questionId,
+    available_time: formatDuration(availableTimeSeconds),
   });
   const question = mapCbtQuestion(reply);
   if (!question) throw new Error("The CBT question could not be read.");
@@ -215,7 +242,7 @@ export const pickQuizOption = async ({
   });
 };
 
-export const startOrResumeCbt = async (tutorialId: string) => {
-  const session = await startResumeQuiz(tutorialId);
+export const startOrResumeCbt = async (tutorialId: string, durationSeconds: number) => {
+  const session = await startResumeQuiz(tutorialId, durationSeconds);
   return { session, question: await fetchQuizQuestion(session) };
 };

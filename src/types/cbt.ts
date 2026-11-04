@@ -12,6 +12,8 @@ export interface PracticeQuestion {
 export interface CbtSummary {
   assessment: AssessmentLink;
   questions: PracticeQuestion[];
+  /** Total time allotted for the quiz, parsed from `quiz_duration` (HH:MM:SS). */
+  durationSeconds: number;
 }
 
 export interface CbtQuizSession {
@@ -19,6 +21,8 @@ export interface CbtQuizSession {
   displayQuestionNo: number;
   displayQuestionId: string;
   buttons: CbtQuestionButton[];
+  /** Total time allotted for the quiz, in seconds. */
+  durationSeconds: number;
 }
 
 export interface CbtQuestionButton {

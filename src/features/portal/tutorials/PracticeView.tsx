@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, ExternalLink, FileQuestion, LockKeyhole, XCircle } from "lucide-react";
 import { PortalWrapper } from "../PortalWrapper";
 import { EmptyPanel, ErrorState } from "@/components/ui/State";
@@ -9,7 +9,7 @@ import { useCbtQuiz, useCbtSummary, useLesson, useSubscription } from "@/hooks/u
 import { getPracticeQuestions } from "@/data/practice";
 import { canOpenLesson } from "@/services/access";
 import { isMockMode } from "@/lib/config";
-import { fetchQuizQuestion, pickQuizOption } from "@/services/cbt";
+import { fetchQuizQuestion, formatDuration, pickQuizOption } from "@/services/cbt";
 import type { CbtQuestion, CbtQuizSession } from "@/types/cbt";
 
 function LiveCbtPractice({
@@ -32,11 +32,24 @@ function LiveCbtPractice({
   const currentButton = session.buttons.find((button) => button.questionId === question.id);
   const isAttempted = attempted.has(question.id);
 
+  const [secondsLeft, setSecondsLeft] = useState(session.durationSeconds);
+  const secondsLeftRef = useRef(session.durationSeconds);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSecondsLeft((current) => {
+        const next = Math.max(0, current - 1);
+        secondsLeftRef.current = next;
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const openQuestion = async (questionId: string) => {
     setBusy(true);
     setError("");
     try {
-      const next = await fetchQuizQuestion(session, questionId);
+      const next = await fetchQuizQuestion(session, questionId, secondsLeftRef.current);
       setQuestion(next);
       setSelectedOptionId(next.selectedOptionId ?? "");
     } catch (cause) {
@@ -62,7 +75,7 @@ function LiveCbtPractice({
       const next = session.buttons.find((button) => !nextAttempted.has(button.questionId));
       if (next) {
         setMessage("Answer saved. Loading the next question…");
-        const nextQuestion = await fetchQuizQuestion(session, next.questionId);
+        const nextQuestion = await fetchQuizQuestion(session, next.questionId, secondsLeftRef.current);
         setQuestion(nextQuestion);
         setSelectedOptionId(nextQuestion.selectedOptionId ?? "");
       } else {
@@ -77,12 +90,18 @@ function LiveCbtPractice({
 
   return (
     <div className="mt-6 space-y-5">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--secondary-hover-color)]">CBT practice</p>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-900">{lessonTitle}</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Question {currentButton?.number ?? session.displayQuestionNo} of {session.buttons.length}
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--secondary-hover-color)]">CBT practice</p>
+          <h1 className="mt-2 text-2xl font-semibold text-slate-900">{lessonTitle}</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Question {currentButton?.number ?? session.displayQuestionNo} of {session.buttons.length}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Time remaining</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--primary-color)]">{formatDuration(secondsLeft)}</p>
+        </div>
       </header>
 
       {session.buttons.length > 1 && (
@@ -148,6 +167,9 @@ function LiveCbtPractice({
                   onChange={() => setSelectedOptionId(option.id)}
                   className="h-4 w-4 shrink-0 accent-[var(--primary-color)]"
                 />
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-slate-300 text-xs font-semibold text-slate-700">
+                  {option.id}
+                </span>
                 {option.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={option.imageUrl} alt="" className="h-12 w-16 shrink-0 rounded-lg object-cover" />
@@ -177,7 +199,7 @@ export default function PracticeView({ lessonId }: { lessonId: string }) {
   const hasExternalCbt = Boolean(liveAssessment && /^https?:\/\//i.test(liveAssessment.url));
   const shouldLoadLiveQuiz =
     access === "active" && cbtQuery.isSuccess && Boolean(cbtQuery.data) && !hasExternalCbt;
-  const quizQuery = useCbtQuiz(lessonId, shouldLoadLiveQuiz);
+  const quizQuery = useCbtQuiz(lessonId, cbtQuery.data?.durationSeconds ?? 0, shouldLoadLiveQuiz);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
 
